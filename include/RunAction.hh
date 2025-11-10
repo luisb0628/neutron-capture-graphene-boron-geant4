@@ -3,21 +3,20 @@
 
 #include "G4UserRunAction.hh"
 #include "globals.hh"
-
-class G4Run;
-class G4Timer; // Declaración adelantada para no incluir todo <G4Timer.hh> aquí
+#include <fstream>   // <-- necesario para std::ofstream
 
 class RunAction : public G4UserRunAction
 {
-  public:
+public:
     RunAction();
-    virtual ~RunAction() override;
+    ~RunAction() override;
 
-    virtual void BeginOfRunAction(const G4Run*) override;
-    virtual void EndOfRunAction(const G4Run*) override;
+    void BeginOfRunAction(const G4Run*) override;
+    void EndOfRunAction(const G4Run*) override;
 
-  private:
-    G4Timer* fTimer; // 🔹 Temporizador para medir la duración del run
+    // === NUEVO ===
+    // Archivo ASCII para guardar las partículas generadas (α, Li, γ)
+    std::ofstream outputFile;
 };
 
 #endif

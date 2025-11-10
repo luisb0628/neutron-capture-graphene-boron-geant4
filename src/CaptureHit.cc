@@ -15,11 +15,11 @@ CaptureHit::CaptureHit()
       fTime(0.),
       fKineticEnergy(0.),
       fProcessName(""),
-      fVolumeName("")
+      fVolumeName(""),
+      fRegionType(-1)
 {}
 
-CaptureHit::~CaptureHit()
-{}
+CaptureHit::~CaptureHit() = default;
 
 CaptureHit::CaptureHit(const CaptureHit& right)
     : G4VHit()
@@ -34,10 +34,12 @@ CaptureHit::CaptureHit(const CaptureHit& right)
     fKineticEnergy = right.fKineticEnergy;
     fProcessName = right.fProcessName;
     fVolumeName = right.fVolumeName;
+    fRegionType = right.fRegionType;
 }
 
 const CaptureHit& CaptureHit::operator=(const CaptureHit& right)
 {
+    if (this == &right) return *this;
     fTrackID = right.fTrackID;
     fParticleName = right.fParticleName;
     fParticleType = right.fParticleType;
@@ -48,12 +50,13 @@ const CaptureHit& CaptureHit::operator=(const CaptureHit& right)
     fKineticEnergy = right.fKineticEnergy;
     fProcessName = right.fProcessName;
     fVolumeName = right.fVolumeName;
+    fRegionType = right.fRegionType;
     return *this;
 }
 
 G4bool CaptureHit::operator==(const CaptureHit& right) const
 {
-    return (this == &right) ? true : false;
+    return (this == &right);
 }
 
 void CaptureHit::Print()
@@ -69,5 +72,6 @@ void CaptureHit::Print()
            << " KineticEnergy: " << G4BestUnit(fKineticEnergy, "Energy")
            << " Process: " << fProcessName
            << " Volume: " << fVolumeName
+           << " RegionType: " << fRegionType
            << G4endl;
 }

@@ -8,19 +8,18 @@
 class G4Step;
 class G4HCofThisEvent;
 
-class CaptureSD : public G4VSensitiveDetector
-{
+class CaptureSD : public G4VSensitiveDetector {
 public:
     CaptureSD(const G4String& name, const G4String& hitsCollectionName);
-    virtual ~CaptureSD();
-    
-    // Métodos base
-    virtual void Initialize(G4HCofThisEvent* hitCollection);
-    virtual G4bool ProcessHits(G4Step* step, G4TouchableHistory* history);
-    virtual void EndOfEvent(G4HCofThisEvent* hitCollection);
-    
+    ~CaptureSD() override;
+
+    void Initialize(G4HCofThisEvent* hce) override;
+    G4bool ProcessHits(G4Step* step, G4TouchableHistory* history) override;
+    void EndOfEvent(G4HCofThisEvent* hce) override;
+
 private:
-    CaptureHitsCollection* fHitsCollection;
+    CaptureHitsCollection* fHitsCollection;  // <-- ahora sí reconocido
 };
+
 
 #endif

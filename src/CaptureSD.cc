@@ -1,4 +1,6 @@
 #include "CaptureSD.hh"
+#include "CaptureHit.hh"
+#include "RunAction.hh"
 #include "G4Step.hh"
 #include "G4ParticleDefinition.hh"
 #include "G4SystemOfUnits.hh"
@@ -8,165 +10,151 @@
 #include "G4StepPoint.hh"
 #include "G4SDManager.hh"
 #include "G4ios.hh"
-#include "G4VProcess.hh"  // ¡NECESARIO PARA USAR G4VProcess!
+#include "G4VProcess.hh"
+#include "G4RunManager.hh"
+#include "G4Event.hh"
 
 CaptureSD::CaptureSD(const G4String& name, const G4String& hitsCollectionName)
-    : G4VSensitiveDetector(name),
-      fHitsCollection(nullptr)
+    : G4VSensitiveDetector(name), fHitsCollection(nullptr)
 {
     collectionName.insert(hitsCollectionName);
 }
 
-CaptureSD::~CaptureSD()
-{
-}
+CaptureSD::~CaptureSD() = default;
 
 void CaptureSD::Initialize(G4HCofThisEvent* hce)
 {
-    // Crear la colección de hits
     fHitsCollection = new CaptureHitsCollection(SensitiveDetectorName, collectionName[0]);
-    
     G4int hcID = G4SDManager::GetSDMpointer()->GetCollectionID(collectionName[0]);
     hce->AddHitsCollection(hcID, fHitsCollection);
 }
 
 G4bool CaptureSD::ProcessHits(G4Step* step, G4TouchableHistory*)
 {
-    auto analysisManager = G4AnalysisManager::Instance();
-    
+    auto analysis = G4AnalysisManager::Instance();
     G4Track* track = step->GetTrack();
-    G4String particleName = track->GetDefinition()->GetParticleName();
-    G4double energy = track->GetKineticEnergy();
-    G4double edep = step->GetTotalEnergyDeposit();
-    G4ThreeVector pos = step->GetPostStepPoint()->GetPosition();
-    G4double time = track->GetGlobalTime();
-    G4double theta = pos.theta(); // en radianes
 
-    G4bool isParticleOfInterest = false;
-    G4int particleType = 0;
+    // --- Solo el primer step del track ---
+    if (track->GetCurrentStepNumber() != 1)
+        return false;
 
-    // Detectar iones de litio
-    if (particleName == "Li7" || particleName == "Li6") {
-        isParticleOfInterest = true;
-        particleType = 1; // Litio
-        
-        // Llenar histograma de energía de litio (ID 3)
-        analysisManager->FillH1(3, energy);
-        
-        // Llenar ntuple de captura
-        analysisManager->FillNtupleIColumn(1, 0, particleType);
-        analysisManager->FillNtupleDColumn(1, 1, energy/MeV);
-        analysisManager->FillNtupleDColumn(1, 2, edep/MeV);
-        analysisManager->FillNtupleDColumn(1, 3, pos.x()/mm);
-        analysisManager->FillNtupleDColumn(1, 4, pos.y()/mm);
-        analysisManager->FillNtupleDColumn(1, 5, pos.z()/mm);
-        analysisManager->FillNtupleDColumn(1, 6, time/ns);
-        analysisManager->FillNtupleDColumn(1, 7, theta * 180./M_PI);
-        analysisManager->FillNtupleSColumn(1, 8, step->GetPreStepPoint()->GetTouchableHandle()->GetVolume()->GetName());
-        
-        const G4VProcess* process = step->GetPostStepPoint()->GetProcessDefinedStep();
-        if (process) {
-            analysisManager->FillNtupleSColumn(1, 9, process->GetProcessName());
+    auto particle = track->GetDefinition();
+    auto prePoint = step->GetPreStepPoint();
+    auto volumeName = prePoint->GetTouchableHandle()->GetVolume()->GetName();
+
+    G4double energy = step->GetPreStepPoint()->GetKineticEnergy();
+    G4double edep   = step->GetTotalEnergyDeposit();
+    G4ThreeVector pos = prePoint->GetPosition();
+    G4ThreeVector dir = track->GetMomentumDirection();
+    G4double time   = track->GetGlobalTime();
+    G4double theta  = dir.theta() * 180. / CLHEP::pi;
+    G4double stepLength = step->GetStepLength();
+
+    // --- Procesos de creación y del step ---
+    const G4VProcess* creator = track->GetCreatorProcess();
+    const G4VProcess* process = step->GetPostStepPoint()->GetProcessDefinedStep();
+    G4String creatorName = creator ? creator->GetProcessName() : "primary";
+    G4String processName = process ? process->GetProcessName() : "Unknown";
+
+    // --- Identificación del tipo de partícula ---
+    G4int Z = particle->GetAtomicNumber();
+    G4int A = particle->GetAtomicMass();
+    G4String pname = particle->GetParticleName();
+    G4String particleLabel = "Otro";
+
+    if (pname == "gamma") {
+        // Detectar gammas creados por captura (B10(n,α)Li7*)
+        if (creatorName != "nCapture") {
+            particleLabel = "Gamma";
         } else {
-            analysisManager->FillNtupleSColumn(1, 9, "Unknown");
+            return false; // ignorar otros fotones
         }
-        
-        analysisManager->AddNtupleRow(1);
     }
-    // Detectar partículas alfa
-    else if (particleName == "alpha" || particleName == "He4") {
-        isParticleOfInterest = true;
-        particleType = 2; // Alpha
-        
-        // Llenar histogramas de alfa
-        analysisManager->FillH1(2, energy); // AlphaEnergy (ID 2)
-        analysisManager->FillH1(5, theta * 180./M_PI); // AlphaTheta (ID 5)
-        
-        // Llenar ntuple de captura
-        analysisManager->FillNtupleIColumn(1, 0, particleType);
-        analysisManager->FillNtupleDColumn(1, 1, energy/MeV);
-        analysisManager->FillNtupleDColumn(1, 2, edep/MeV);
-        analysisManager->FillNtupleDColumn(1, 3, pos.x()/mm);
-        analysisManager->FillNtupleDColumn(1, 4, pos.y()/mm);
-        analysisManager->FillNtupleDColumn(1, 5, pos.z()/mm);
-        analysisManager->FillNtupleDColumn(1, 6, time/ns);
-        analysisManager->FillNtupleDColumn(1, 7, theta * 180./M_PI);
-        analysisManager->FillNtupleSColumn(1, 8, step->GetPreStepPoint()->GetTouchableHandle()->GetVolume()->GetName());
-        
-        const G4VProcess* process = step->GetPostStepPoint()->GetProcessDefinedStep();
-        if (process) {
-            analysisManager->FillNtupleSColumn(1, 9, process->GetProcessName());
-        } else {
-            analysisManager->FillNtupleSColumn(1, 9, "Unknown");
-        }
-        
-        analysisManager->AddNtupleRow(1);
+    else if (Z == 2 && A == 4) {
+        particleLabel = "Alpha";
     }
-    // Detectar rayos gamma
-    else if (particleName == "gamma") {
-        isParticleOfInterest = true;
-        particleType = 3; // Gamma
-        
-        // Llenar histograma de gamma (ID 4)
-        analysisManager->FillH1(4, energy);
-        
-        // Llenar ntuple de captura
-        analysisManager->FillNtupleIColumn(1, 0, particleType);
-        analysisManager->FillNtupleDColumn(1, 1, energy/MeV);
-        analysisManager->FillNtupleDColumn(1, 2, edep/MeV);
-        analysisManager->FillNtupleDColumn(1, 3, pos.x()/mm);
-        analysisManager->FillNtupleDColumn(1, 4, pos.y()/mm);
-        analysisManager->FillNtupleDColumn(1, 5, pos.z()/mm);
-        analysisManager->FillNtupleDColumn(1, 6, time/ns);
-        analysisManager->FillNtupleDColumn(1, 7, theta * 180./M_PI);
-        analysisManager->FillNtupleSColumn(1, 8, step->GetPreStepPoint()->GetTouchableHandle()->GetVolume()->GetName());
-        
-        const G4VProcess* process = step->GetPostStepPoint()->GetProcessDefinedStep();
-        if (process) {
-            analysisManager->FillNtupleSColumn(1, 9, process->GetProcessName());
-        } else {
-            analysisManager->FillNtupleSColumn(1, 9, "Unknown");
-        }
-        
-        analysisManager->AddNtupleRow(1);
+    else if (Z == 3 && (A == 6 || A == 7)) {
+        particleLabel = "Litio";
+    }
+    else {
+        return false; // ignorar partículas irrelevantes
     }
 
-    // Llenar histograma de tiempo para todas las partículas (ID 6)
-    if (isParticleOfInterest) {
-        analysisManager->FillH1(6, time);
-        
-        // Crear hit para la colección
-        CaptureHit* newHit = new CaptureHit();
-        newHit->SetTrackID(track->GetTrackID());
-        newHit->SetParticleName(particleName);
-        newHit->SetParticleType(particleType);
-        newHit->SetEdep(edep);
-        newHit->SetStepLength(step->GetStepLength());
-        newHit->SetPos(pos);
-        newHit->SetTime(time);
-        newHit->SetKineticEnergy(energy);
-        
-        const G4VProcess* process = step->GetPostStepPoint()->GetProcessDefinedStep();
-        if (process) {
-            newHit->SetProcessName(process->GetProcessName());
-        }
-        
-        G4TouchableHandle touchable = step->GetPreStepPoint()->GetTouchableHandle();
-        newHit->SetVolumeName(touchable->GetVolume()->GetName());
-        
-        fHitsCollection->insert(newHit);
-        
-        return true;
+    // --- Solo registrar si ocurre en el film de grafeno ---
+    if (volumeName != "graphene") return false; 
+    G4int regionType = 0;
+
+    // --- Llenar histogramas ---
+    if (particleLabel == "Alpha") {
+        analysis->FillH1(1, energy);
+        analysis->FillH1(4, theta); // distribución angular
+    }
+    else if (particleLabel == "Litio") {
+        analysis->FillH1(2, energy);
+    }
+    else if (particleLabel == "Gamma") {
+        analysis->FillH1(3, energy);
     }
 
-    return false;
+    // --- IDs de evento y track ---
+    auto eventID = G4RunManager::GetRunManager()->GetCurrentEvent()->GetEventID();
+    G4int trackID = track->GetTrackID();
+    G4int parentID = track->GetParentID();
+
+    // --- Llenar ntuple ---
+    analysis->FillNtupleIColumn(1, 0, eventID);
+    analysis->FillNtupleIColumn(1, 1, trackID);
+    analysis->FillNtupleIColumn(1, 2, parentID);
+    analysis->FillNtupleSColumn(1, 3, particleLabel);
+    analysis->FillNtupleIColumn(1, 4, regionType);
+    analysis->FillNtupleDColumn(1, 5, energy / MeV);
+    analysis->FillNtupleDColumn(1, 6, edep / MeV);
+    analysis->FillNtupleDColumn(1, 7, pos.x() / mm);
+    analysis->FillNtupleDColumn(1, 8, pos.y() / mm);
+    analysis->FillNtupleDColumn(1, 9, pos.z() / mm);
+    analysis->FillNtupleDColumn(1,10, dir.x());
+    analysis->FillNtupleDColumn(1,11, dir.y());
+    analysis->FillNtupleDColumn(1,12, dir.z());
+    analysis->FillNtupleDColumn(1,13, stepLength / mm);
+    analysis->FillNtupleDColumn(1,14, time / ns);
+    analysis->FillNtupleDColumn(1,15, theta);
+    analysis->FillNtupleSColumn(1,16, volumeName);
+    analysis->FillNtupleSColumn(1,17, creatorName);
+    analysis->FillNtupleSColumn(1,18, processName);
+    analysis->AddNtupleRow(1);
+
+    // --- Guardar hit ---
+    auto newHit = new CaptureHit();
+    newHit->SetTrackID(trackID);
+    newHit->SetParticleName(pname);
+    newHit->SetEdep(edep);
+    newHit->SetStepLength(stepLength);
+    newHit->SetPos(pos);
+    newHit->SetTime(time);
+    newHit->SetKineticEnergy(energy);
+    newHit->SetProcessName(processName);
+    newHit->SetVolumeName(volumeName);
+    newHit->SetRegionType(regionType);
+    fHitsCollection->insert(newHit);
+
+    // --- Exportar ASCII ---
+    auto runAction = const_cast<RunAction*>(
+        static_cast<const RunAction*>(G4RunManager::GetRunManager()->GetUserRunAction()));
+
+    if (runAction && runAction->outputFile.is_open()) {
+        runAction->outputFile << eventID << " " << trackID << " " << parentID << " "
+                              << particleLabel << " " << energy / MeV << " "
+                              << pos.x() / mm << " " << pos.y() / mm << " " << pos.z() / mm << " "
+                              << dir.x() << " " << dir.y() << " " << dir.z() << " "
+                              << time / ns << " " << creatorName << " " << processName << "\n";
+    }
+
+    return true;
 }
 
 void CaptureSD::EndOfEvent(G4HCofThisEvent*)
 {
-    // Opcional: imprimir información de depuración
     G4int nofHits = fHitsCollection->entries();
-    if (nofHits > 0) {
+    if (nofHits > 0)
         G4cout << "CaptureSD: " << nofHits << " hits in this event" << G4endl;
-    }
 }

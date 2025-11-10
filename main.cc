@@ -74,7 +74,7 @@ int main(int argc, char** argv) {
             G4cout << "Usando vis1.mac para configuración..." << G4endl;
             
             // Ejecutar tu macro de visualización
-            UImanager->ApplyCommand("/control/execute vis1.mac");
+            UImanager->ApplyCommand("/control/execute ../macros/vis1.mac");
             
             // Iniciar sesión interactiva
             ui->SessionStart();

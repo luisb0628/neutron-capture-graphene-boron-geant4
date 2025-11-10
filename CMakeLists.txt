@@ -21,10 +21,10 @@ set(SOURCES
 )
 
 # --- Ejecutable principal ---
-add_executable(NeutronBeam main.cc ${SOURCES})
+add_executable(Film_graphene main.cc ${SOURCES})
 
 # --- Enlazar librerías de Geant4 ---
-target_link_libraries(NeutronBeam ${Geant4_LIBRARIES})
+target_link_libraries(Film_graphene ${Geant4_LIBRARIES})
 
 # --- Copiar macros automáticamente al build ---
 file(GLOB MACRO_FILES "${PROJECT_SOURCE_DIR}/macros/*.mac")
@@ -37,5 +37,5 @@ message(STATUS "Geant4 found at: ${Geant4_DIR}")
 message(STATUS "Project built in: ${PROJECT_BINARY_DIR}")
 
 # --- Opcional: instalación ---
-install(TARGETS NeutronBeam DESTINATION bin)
+install(TARGETS Film_graphene DESTINATION bin)
 
