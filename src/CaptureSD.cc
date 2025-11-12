@@ -63,13 +63,18 @@ G4bool CaptureSD::ProcessHits(G4Step* step, G4TouchableHistory*)
     G4String particleLabel = "Otro";
 
     if (pname == "gamma") {
-        // Detectar gammas creados por captura (B10(n,α)Li7*)
-        if (creatorName != "nCapture") {
-            particleLabel = "Gamma";
-        } else {
-            return false; // ignorar otros fotones
-        }
+    // Aceptar TODOS los gammas en el grafeno y luego filtrar en análisis
+    particleLabel = "Gamma";
+
+    // Energía cinética del fotón en el punto de creación del track
+    G4double Ekin_gamma = track->GetVertexKineticEnergy() / MeV;
+
+    // Llenar histograma de energía de gammas con la energía de creación
+    analysis->FillH1(3, Ekin_gamma);
     }
+
+
+    
     else if (Z == 2 && A == 4) {
         particleLabel = "Alpha";
     }
@@ -92,9 +97,7 @@ G4bool CaptureSD::ProcessHits(G4Step* step, G4TouchableHistory*)
     else if (particleLabel == "Litio") {
         analysis->FillH1(2, energy);
     }
-    else if (particleLabel == "Gamma") {
-        analysis->FillH1(3, energy);
-    }
+    
 
     // --- IDs de evento y track ---
     auto eventID = G4RunManager::GetRunManager()->GetCurrentEvent()->GetEventID();

@@ -24,7 +24,7 @@ G4VPhysicalVolume* DetectorConstruction::Construct() {
     auto nist = G4NistManager::Instance();
 
     // --- Mundo ---
-    auto worldMat = nist->FindOrBuildMaterial("G4_Galactic"); // vacío para térmicos
+    auto worldMat = nist->FindOrBuildMaterial("G4_Galactic");
     auto solidWorld = new G4Box("World", 3*cm, 3*cm, 2*cm);
     auto logicWorld = new G4LogicalVolume(solidWorld, worldMat, "World");
     auto physWorld  = new G4PVPlacement(0, G4ThreeVector(), logicWorld, "World", 0, false, 0);
@@ -33,28 +33,26 @@ G4VPhysicalVolume* DetectorConstruction::Construct() {
     auto B10 = new G4Isotope("B10", 5, 10, 10.0*g/mole);
     auto B11 = new G4Isotope("B11", 5, 11, 11.0*g/mole);
     auto elB_enriched = new G4Element("BoronEnriched", "B_enr", 2);
-    elB_enriched->AddIsotope(B10, 90.*perCent);  // 90% B10
-    elB_enriched->AddIsotope(B11, 10.*perCent);  // 10% B11
+    elB_enriched->AddIsotope(B10, 100.*perCent);
+    elB_enriched->AddIsotope(B11, 0.*perCent);
 
     // --- Film de grafeno dopado con Boro ---
     G4double grapheneThickness = 100 * nm;
     G4double grapheneHalfZ = grapheneThickness / 2.0;
 
     auto graphene = new G4Material("graphene", 2.2*g/cm3, 2);
-    graphene->AddElement(nist->FindOrBuildElement("C"), 0.85);
-    graphene->AddElement(elB_enriched, 0.15);
+    graphene->AddElement(nist->FindOrBuildElement("C"), 0.15);
+    graphene->AddElement(elB_enriched, 0.85);
 
-    auto solidgraphene = new G4Box("graphene", 1*cm, 1*cm, grapheneHalfZ); // 2cmx2cm total
+    auto solidgraphene = new G4Box("graphene", 1*cm, 1*cm, grapheneHalfZ);
     auto logicgraphene = new G4LogicalVolume(solidgraphene, graphene, "graphene");
     new G4PVPlacement(0, G4ThreeVector(0,0,0), logicgraphene, "graphene", logicWorld, false, 0);
 
-    // --- Film Kapton (pegado al grafeno) ---
+    // --- Film Kapton (detrás del grafeno) ---
     G4double kaptonThickness = 50*um;
     G4double kaptonHalfZ = kaptonThickness/2.0;
-
     G4Material* kaptonMat = nist->FindOrBuildMaterial("G4_KAPTON");
 
-    // Colocamos el kapton justo detrás del grafeno (sin aire entre ellos)
     G4double kaptonZ = grapheneHalfZ + kaptonHalfZ;
     auto solidkapton = new G4Box("kapton", 1*cm, 1*cm, kaptonHalfZ);
     auto logickapton = new G4LogicalVolume(solidkapton, kaptonMat, "kapton");
@@ -69,21 +67,11 @@ G4VPhysicalVolume* DetectorConstruction::Construct() {
     auto logicDet = new G4LogicalVolume(solidDet, detMat, "Detector");
     new G4PVPlacement(0, G4ThreeVector(0,0,detZ), logicDet, "Detector", logicWorld, false, 0);
 
-    // --- Detector de captura (productos de reacción) ---
-    //G4double capThickness = 0.5*mm;
-    //G4double capHalfZ = capThickness / 2.0;
-    //G4double capZ = detZ + detHalfZ + capHalfZ;
-    //auto capMat = nist->FindOrBuildMaterial("G4_Si");
-    //auto solidCap = new G4Box("Capture", 1*cm, 1*cm, capHalfZ);
-    //auto logicCap = new G4LogicalVolume(solidCap, capMat, "Capture");
-    //new G4PVPlacement(0, G4ThreeVector(0,0,capZ), logicCap, "Capture", logicWorld, false, 0);
-
     // --- Límites de paso ---
-    logicWorld->SetUserLimits(new G4UserLimits(1.0*mm));      // mundo
-    logicgraphene->SetUserLimits(new G4UserLimits(0.01*mm));  // precisión en film
+    logicWorld->SetUserLimits(new G4UserLimits(1.0*mm));
+    logicgraphene->SetUserLimits(new G4UserLimits(0.01*mm));
     logickapton->SetUserLimits(new G4UserLimits(0.01*mm));
     logicDet->SetUserLimits(new G4UserLimits(0.01*mm));
-    //logicCap->SetUserLimits(new G4UserLimits(0.01*mm));
 
     logicWorld->SetVisAttributes(G4VisAttributes::GetInvisible());
 
@@ -93,67 +81,52 @@ G4VPhysicalVolume* DetectorConstruction::Construct() {
     cuts->SetProductionCut(0.01*mm, G4ProductionCuts::GetIndex("gamma"));
     cuts->SetProductionCut(0.01*mm, G4ProductionCuts::GetIndex("e-"));
 
-    // Asignar región
     auto region = new G4Region("DetectorRegion");
     region->AddRootLogicalVolume(logicgraphene);
     region->AddRootLogicalVolume(logickapton);
     region->AddRootLogicalVolume(logicDet);
-    //region->AddRootLogicalVolume(logicCap);
     region->SetProductionCuts(cuts);
 
     // --- Atributos visuales ---
-    auto visGraphene = new G4VisAttributes(G4Colour(0.0, 0.0, 1.0, 0.7)); // Azul translúcido
+    auto visGraphene = new G4VisAttributes(G4Colour(0.0, 0.0, 1.0, 0.7)); // Azul
     visGraphene->SetForceSolid(true);
     logicgraphene->SetVisAttributes(visGraphene);
 
-    auto visKapton = new G4VisAttributes(G4Colour(1.0, 0.7, 0.3, 0.4)); // Naranja translúcido
+    auto visKapton = new G4VisAttributes(G4Colour(1.0, 0.7, 0.3, 0.4)); // Naranja
     visKapton->SetForceSolid(true);
     logickapton->SetVisAttributes(visKapton);
 
-    auto visDetector = new G4VisAttributes(G4Colour(0.0, 1.0, 0.0, 0.2)); // Verde translúcido
+    auto visDetector = new G4VisAttributes(G4Colour(0.0, 1.0, 0.0, 0.2)); // Verde
     visDetector->SetForceSolid(true);
     logicDet->SetVisAttributes(visDetector);
-
-    //auto visCapture = new G4VisAttributes(G4Colour(1.0, 0.0, 0.0, 0.2)); // Rojo translúcido
-    //visCapture->SetForceSolid(true);
-    //logicCap->SetVisAttributes(visCapture);
 
     return physWorld;
 }
 
-//void DetectorConstruction::ConstructSDandField() {
-//    G4SDManager* sdman = G4SDManager::GetSDMpointer();
-
-    // --- Detector transmitidos ---
-//    auto transmittedSD = new TransmittedSD("TransmittedSD");
-//    sdman->AddNewDetector(transmittedSD);
-//    auto lvDet = G4LogicalVolumeStore::GetInstance()->GetVolume("Detector");
-//    if (lvDet) lvDet->SetSensitiveDetector(transmittedSD);
-
-    // --- Detector captura ---
-    //auto captureSD = new CaptureSD("CaptureSD", "CaptureHitsCollection");
-    //sdman->AddNewDetector(captureSD);
-
-    //auto lvCap = G4LogicalVolumeStore::GetInstance()->GetVolume("Capture");
-    //if (lvCap) lvCap->SetSensitiveDetector(captureSD);
-
-//    auto lvGraphene = G4LogicalVolumeStore::GetInstance()->GetVolume("graphene");
-//    if (lvGraphene) lvGraphene->SetSensitiveDetector(captureSD);
-//}
-
 void DetectorConstruction::ConstructSDandField() {
     G4SDManager* sdman = G4SDManager::GetSDMpointer();
 
-    // --- Crear el Sensitive Detector para el film de grafeno ---
+    // --- Sensitive detector para el grafeno (capturas de neutrones) ---
     auto grapheneSD = new CaptureSD("GrapheneSD", "GrapheneHitsCollection");
     sdman->AddNewDetector(grapheneSD);
 
-    // --- Asignar el SD al volumen del film de grafeno ---
     auto lvGraphene = G4LogicalVolumeStore::GetInstance()->GetVolume("graphene");
     if (lvGraphene) {
         lvGraphene->SetSensitiveDetector(grapheneSD);
     } else {
         G4Exception("DetectorConstruction::ConstructSDandField", "SD001", JustWarning,
-                    "Logical volume 'graphene' not found to attach sensitive detector.");
+                    "Logical volume 'graphene' not found to attach CaptureSD.");
+    }
+
+    // --- Sensitive detector para neutrones transmitidos ---
+    auto transmittedSD = new TransmittedSD("TransmittedSD");
+    sdman->AddNewDetector(transmittedSD);
+
+    auto lvDet = G4LogicalVolumeStore::GetInstance()->GetVolume("Detector");
+    if (lvDet) {
+        lvDet->SetSensitiveDetector(transmittedSD);
+    } else {
+        G4Exception("DetectorConstruction::ConstructSDandField", "SD002", JustWarning,
+                    "Logical volume 'Detector' not found to attach TransmittedSD.");
     }
 }

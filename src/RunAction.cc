@@ -18,7 +18,7 @@ void RunAction::BeginOfRunAction(const G4Run*)
   analysisManager->OpenFile("output.root");
 
   // --- Histogramas ---
-  analysisManager->CreateH1("Neutrones", "Espectro de energia de neutrones",
+  analysisManager->CreateH1("GamaEnergy_Transmited", "Espectro de energia de gammas en el transmited",
                             200000, 0., .5e7); // ID 0
   analysisManager->CreateH1("AlphaEnergy", "Energia de particulas alfa", 
                             1000, 0., 10.*MeV); // ID 1
@@ -27,14 +27,31 @@ void RunAction::BeginOfRunAction(const G4Run*)
   analysisManager->CreateH1("GammaEnergy", "Energia de rayos gamma", 
                             1000, 0., 10.*MeV); // ID 3
   analysisManager->CreateH1("AlphaTheta", "Distribucion angular de particulas alfa (theta)",
-                            180, 0., 180.); // ID 4 ✅ (con este trabajará CaptureSD)
+                            180, 0., 180.); // ID 4 
 
-  // --- Ntuple para neutrones transmitidos ---
-  analysisManager->CreateNtuple("NeutronData", "Datos de neutrones transmitidos");
-  analysisManager->CreateNtupleDColumn("KineticEnergy_eV"); 
+  // ============================================================
+  // Ntuple para partículas transmitidas (neutrones y gammas)
+  // ============================================================
+  analysisManager->CreateNtuple("GammaData", "Partículas transmitidas (gammas)");
+  analysisManager->CreateNtupleIColumn("EventID");           // 0
+  analysisManager->CreateNtupleIColumn("TrackID");           // 1
+  analysisManager->CreateNtupleIColumn("ParentID");          // 2
+  analysisManager->CreateNtupleSColumn("ParticleType");      // 3
+  analysisManager->CreateNtupleDColumn("KineticEnergy_MeV"); // 4
+  analysisManager->CreateNtupleDColumn("PosX_mm");           // 5
+  analysisManager->CreateNtupleDColumn("PosY_mm");           // 6
+  analysisManager->CreateNtupleDColumn("PosZ_mm");           // 7
+  analysisManager->CreateNtupleDColumn("DirX");              // 8
+  analysisManager->CreateNtupleDColumn("DirY");              // 9
+  analysisManager->CreateNtupleDColumn("DirZ");              // 10
+  analysisManager->CreateNtupleDColumn("Time_ns");           // 11
+  analysisManager->CreateNtupleSColumn("VolumeName");        // 12
+  analysisManager->CreateNtupleSColumn("CreatorName");       // 13
   analysisManager->FinishNtuple();
 
-  // --- Ntuple para partículas de captura ---
+  // ============================================================
+  // Ntuple para partículas de captura (ya existente)
+  // ============================================================
   analysisManager->CreateNtuple("CaptureData", "Datos de particulas de captura");
   analysisManager->CreateNtupleIColumn("EventID");
   analysisManager->CreateNtupleIColumn("TrackID");
@@ -86,13 +103,6 @@ void RunAction::EndOfRunAction(const G4Run* run)
   // --- Estadísticas ---
   G4cout << "\n=== ESTADÍSTICAS DE LA SIMULACIÓN ===" << G4endl;
   G4cout << "Eventos procesados: " << run->GetNumberOfEvent() << G4endl;
-  G4cout << "\n--- Partículas Detectadas ---" << G4endl;
-  G4cout << "Partículas Alfa: " << analysisManager->GetH1(1)->entries() << G4endl;
-  G4cout << "Iones de Litio: "  << analysisManager->GetH1(2)->entries() << G4endl;
-  G4cout << "Rayos Gamma: "     << analysisManager->GetH1(3)->entries() << G4endl;
-  G4cout << "Distribución angular Alfa (theta): "
-         << analysisManager->GetH1(4)->entries() << " entradas" << G4endl;
-
   G4cout << "\nArchivo ROOT guardado: output.root" << G4endl;
   G4cout << "=====================================" << G4endl;
 }
