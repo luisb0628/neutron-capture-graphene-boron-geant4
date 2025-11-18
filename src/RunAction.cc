@@ -19,7 +19,7 @@ void RunAction::BeginOfRunAction(const G4Run*)
 
   // --- Histogramas ---
   analysisManager->CreateH1("GamaEnergy_Transmited", "Espectro de energia de gammas en el transmited",
-                            200000, 0., .5e7); // ID 0
+                            1000, 0., 10.*MeV); // ID 0
   analysisManager->CreateH1("AlphaEnergy", "Energia de particulas alfa", 
                             1000, 0., 10.*MeV); // ID 1
   analysisManager->CreateH1("LitioEnergy", "Energia de iones de litio", 
@@ -32,7 +32,7 @@ void RunAction::BeginOfRunAction(const G4Run*)
   // ============================================================
   // Ntuple para partículas transmitidas (neutrones y gammas)
   // ============================================================
-  analysisManager->CreateNtuple("GammaData", "Partículas transmitidas (gammas)");
+  analysisManager->CreateNtuple("GammaNeutronData", "Partículas transmitidas (neutrones y gammas)");
   analysisManager->CreateNtupleIColumn("EventID");           // 0
   analysisManager->CreateNtupleIColumn("TrackID");           // 1
   analysisManager->CreateNtupleIColumn("ParentID");          // 2

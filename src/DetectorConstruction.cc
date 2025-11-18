@@ -24,8 +24,8 @@ G4VPhysicalVolume* DetectorConstruction::Construct() {
     auto nist = G4NistManager::Instance();
 
     // --- Mundo ---
-    auto worldMat = nist->FindOrBuildMaterial("G4_Galactic");
-    auto solidWorld = new G4Box("World", 3*cm, 3*cm, 2*cm);
+    auto worldMat = nist->FindOrBuildMaterial("G4_AIR");
+    auto solidWorld = new G4Box("World", 10*cm, 10*cm, 10*cm);
     auto logicWorld = new G4LogicalVolume(solidWorld, worldMat, "World");
     auto physWorld  = new G4PVPlacement(0, G4ThreeVector(), logicWorld, "World", 0, false, 0);
 
@@ -37,12 +37,12 @@ G4VPhysicalVolume* DetectorConstruction::Construct() {
     elB_enriched->AddIsotope(B11, 0.*perCent);
 
     // --- Film de grafeno dopado con Boro ---
-    G4double grapheneThickness = 100 * nm;
+    G4double grapheneThickness = 10 * um;
     G4double grapheneHalfZ = grapheneThickness / 2.0;
 
     auto graphene = new G4Material("graphene", 2.2*g/cm3, 2);
-    graphene->AddElement(nist->FindOrBuildElement("C"), 0.15);
-    graphene->AddElement(elB_enriched, 0.85);
+    graphene->AddElement(nist->FindOrBuildElement("C"), 0.85);
+    graphene->AddElement(elB_enriched, 0.15);
 
     auto solidgraphene = new G4Box("graphene", 1*cm, 1*cm, grapheneHalfZ);
     auto logicgraphene = new G4LogicalVolume(solidgraphene, graphene, "graphene");
@@ -54,12 +54,12 @@ G4VPhysicalVolume* DetectorConstruction::Construct() {
     G4Material* kaptonMat = nist->FindOrBuildMaterial("G4_KAPTON");
 
     G4double kaptonZ = grapheneHalfZ + kaptonHalfZ;
-    auto solidkapton = new G4Box("kapton", 1*cm, 1*cm, kaptonHalfZ);
+    auto solidkapton = new G4Box("kapton", 1.5*cm, 1.5*cm, kaptonHalfZ);
     auto logickapton = new G4LogicalVolume(solidkapton, kaptonMat, "kapton");
     new G4PVPlacement(0, G4ThreeVector(0,0,kaptonZ), logickapton, "kapton", logicWorld, false, 0);
 
     // --- Detector plano (neutrones transmitidos) ---
-    G4double detThickness = 0.5*mm;
+    G4double detThickness = 0.5*nm;
     G4double detHalfZ = detThickness / 2.0;
     G4double detZ = kaptonZ + kaptonHalfZ + detHalfZ;
     auto detMat = nist->FindOrBuildMaterial("G4_AIR");

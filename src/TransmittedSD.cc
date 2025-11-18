@@ -47,7 +47,7 @@ G4bool TransmittedSD::ProcessHits(G4Step* aStep, G4TouchableHistory*)
 
         // --- Histograma neutrones (ID=0) ---
         if (particleName == "gamma")
-            analysisManager->FillH1(0, kinE * MeV / eV);  // convertir a eV
+            analysisManager->FillH1(0, kinE);  // convertir a eV
 
         // --- Ntuple extendido: NeutronData (ID=0) ---
         analysisManager->FillNtupleIColumn(0, 0, eventID);
