@@ -35,10 +35,6 @@ G4bool CaptureSD::ProcessHits(G4Step* step, G4TouchableHistory*)
     auto analysis = G4AnalysisManager::Instance();
     G4Track* track = step->GetTrack();
 
-    // ---------------------------------------------------------------------
-    //  ✔️ SOLO EL PRIMER STEP DEL TRACK 
-    //     (si quieres TODOS LOS STEPS, comenta este bloque)
-    // ---------------------------------------------------------------------
     if (track->GetCurrentStepNumber() != 1)
         return false;
 
@@ -47,10 +43,6 @@ G4bool CaptureSD::ProcessHits(G4Step* step, G4TouchableHistory*)
 
     G4String volumeName = prePoint->GetTouchableHandle()->GetVolume()->GetName();
 
-    // ---------------------------------------------------------------------
-    //  ✔️ SI QUIERES LIMITAR SOLO AL GRAFENO, DESCOMENTA ESTA LÍNEA:
-    //  if (volumeName != "graphene") return false;
-    // ---------------------------------------------------------------------
 
     G4double energy = prePoint->GetKineticEnergy();
     G4double edep   = step->GetTotalEnergyDeposit();
@@ -67,18 +59,15 @@ G4bool CaptureSD::ProcessHits(G4Step* step, G4TouchableHistory*)
     G4String creatorName = creator ? creator->GetProcessName() : "primary";
     G4String processName = process ? process->GetProcessName() : "Unknown";
 
-    // ---------------------------------------------------------------------
-    //  ✔️ IDENTIFICACIÓN DE PARTÍCULA
-    //  Ahora detecta TODAS las partículas
-    // ---------------------------------------------------------------------
+
     G4String pname = particle->GetParticleName();
     G4int Z = particle->GetAtomicNumber();
     G4int A = particle->GetAtomicMass();
 
-    // Por defecto, etiqueta = nombre real de la partícula
+
     G4String particleLabel = pname;
 
-    // Etiquetas especiales si las quieres mantener
+
     if (pname == "gamma") {
         particleLabel = "Gamma";
         G4double Ekin_gamma = track->GetVertexKineticEnergy() / MeV;
@@ -91,12 +80,10 @@ G4bool CaptureSD::ProcessHits(G4Step* step, G4TouchableHistory*)
         particleLabel = "Litio";
     }
 
-    // Tipo de región (si lo usas)
+    // Tipo de región 
     G4int regionType = 0;
 
-    // ---------------------------------------------------------------------
-    //  ✔️ LLENAR N-TUPLE CON TODA LA INFORMACIÓN
-    // ---------------------------------------------------------------------
+
     auto eventID = G4RunManager::GetRunManager()->GetCurrentEvent()->GetEventID();
     G4int trackID = track->GetTrackID();
     G4int parentID = track->GetParentID();
@@ -122,9 +109,7 @@ G4bool CaptureSD::ProcessHits(G4Step* step, G4TouchableHistory*)
     analysis->FillNtupleSColumn(1,18, processName);
     analysis->AddNtupleRow(1);
 
-    // ---------------------------------------------------------------------
-    //  ✔️ GUARDAR HIT
-    // ---------------------------------------------------------------------
+
     auto newHit = new CaptureHit();
     newHit->SetTrackID(trackID);
     newHit->SetParticleName(pname);
@@ -138,9 +123,7 @@ G4bool CaptureSD::ProcessHits(G4Step* step, G4TouchableHistory*)
     newHit->SetRegionType(regionType);
     fHitsCollection->insert(newHit);
 
-    // ---------------------------------------------------------------------
-    //  ✔️ EXPORTAR ASCII (si lo tienes activo)
-    // ---------------------------------------------------------------------
+
     auto runAction = const_cast<RunAction*>(
         static_cast<const RunAction*>(G4RunManager::GetRunManager()->GetUserRunAction()));
 

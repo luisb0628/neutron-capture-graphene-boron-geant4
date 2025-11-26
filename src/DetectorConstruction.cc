@@ -37,12 +37,12 @@ G4VPhysicalVolume* DetectorConstruction::Construct() {
     elB_enriched->AddIsotope(B11, 0.*perCent);
 
     // --- Film de grafeno dopado con Boro ---
-    G4double grapheneThickness = 10 * um;
+    G4double grapheneThickness = 0.01 * nm;
     G4double grapheneHalfZ = grapheneThickness / 2.0;
 
     auto graphene = new G4Material("graphene", 2.2*g/cm3, 2);
-    graphene->AddElement(nist->FindOrBuildElement("C"), 0.85);
-    graphene->AddElement(elB_enriched, 0.15);
+    graphene->AddElement(nist->FindOrBuildElement("C"), 0.999);
+    graphene->AddElement(elB_enriched, 0.001);
 
     auto solidgraphene = new G4Box("graphene", 1*cm, 1*cm, grapheneHalfZ);
     auto logicgraphene = new G4LogicalVolume(solidgraphene, graphene, "graphene");
