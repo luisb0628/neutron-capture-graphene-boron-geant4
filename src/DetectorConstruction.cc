@@ -18,6 +18,8 @@
 #include "G4Element.hh"
 #include "G4GenericMessenger.hh"
 #include "G4RunManager.hh"
+#include <cmath>
+#include <string>
 
 DetectorConstruction::DetectorConstruction()
     : G4VUserDetectorConstruction()
@@ -38,17 +40,32 @@ DetectorConstruction::~DetectorConstruction()
 // ======================================================
 void DetectorConstruction::DefineMaterials()
 {
-    auto* nist = G4NistManager::Instance();
-
     auto B10 = new G4Isotope("B10", 5, 10, 10.0*g/mole);
     auto B11 = new G4Isotope("B11", 5, 11, 11.0*g/mole);
-    auto elB_enriched = new G4Element("BoronEnriched", "B_enr", 2);
-    elB_enriched->AddIsotope(B10, 100.*perCent);
-    elB_enriched->AddIsotope(B11,   0.*perCent);
+    fElB_enriched = new G4Element("BoronEnriched", "B_enr", 2);
+    fElB_enriched->AddIsotope(B10, 100.*perCent);
+    fElB_enriched->AddIsotope(B11,   0.*perCent);
 
-    fGrapheneMat = new G4Material("graphene", 2.2*g/cm3, 2);
-    fGrapheneMat->AddElement(nist->FindOrBuildElement("C"), 0.95);
-    fGrapheneMat->AddElement(elB_enriched,                 0.05);
+    BuildGrapheneMaterial();   // crea el material inicial con fBoronFraction
+}
+
+// Crea (o reutiliza si ya existe) el material de grafeno con la fracción de boro actual.
+// Cada fracción distinta genera un material con nombre único en la tabla global.
+void DetectorConstruction::BuildGrapheneMaterial()
+{
+    auto* nist = G4NistManager::Instance();
+
+    // Nombre único por fracción: e.g. "graphene_B500" = 5.00 % boro
+    G4int fractionPPM = G4int(std::round(fBoronFraction * 1e6));
+    G4String matName  = "graphene_B" + std::to_string(fractionPPM);
+
+    // Reutilizar si ya fue creado en una corrida anterior
+    fGrapheneMat = G4Material::GetMaterial(matName, /*warn=*/false);
+    if (!fGrapheneMat) {
+        fGrapheneMat = new G4Material(matName, 2.2*g/cm3, 2);
+        fGrapheneMat->AddElement(nist->FindOrBuildElement("C"), 1.0 - fBoronFraction);
+        fGrapheneMat->AddElement(fElB_enriched,                 fBoronFraction);
+    }
 }
 
 // ======================================================
@@ -70,6 +87,17 @@ void DetectorConstruction::SetKaptonThickness(G4double t)
         G4RunManager::GetRunManager()->ReinitializeGeometry();
 }
 
+void DetectorConstruction::SetBoronFraction(G4double f)
+{
+    fBoronFraction = f;
+    BuildGrapheneMaterial();   // crear/recuperar material con nueva fracción
+    if (fGeometryBuilt) {
+        // Actualizar el LV inmediatamente para que la próxima reinit use el material correcto
+        if (fLogicGraphene) fLogicGraphene->SetMaterial(fGrapheneMat);
+        G4RunManager::GetRunManager()->ReinitializeGeometry();
+    }
+}
+
 // ======================================================
 // Messenger — define los comandos de macro
 // ======================================================
@@ -89,6 +117,12 @@ void DetectorConstruction::DefineCommands()
         "Espesor del film de Kapton [um]")
         .SetParameterName("thickness", false)
         .SetRange("thickness > 0");
+
+    fMessenger->DeclareMethod("boronFraction",
+        &DetectorConstruction::SetBoronFraction,
+        "Fracción másica de B-10 en el grafeno (0–1, e.g. 0.05 = 5 %)")
+        .SetParameterName("fraction", false)
+        .SetRange("fraction > 0 && fraction < 1");
 }
 
 G4VPhysicalVolume* DetectorConstruction::Construct() {

@@ -7,6 +7,7 @@
 
 class G4GenericMessenger;
 class G4Material;
+class G4Element;
 class CaptureSD;
 class TransmittedSD;
 
@@ -21,14 +22,18 @@ public:
 
     void SetGrapheneThickness(G4double t);
     void SetKaptonThickness(G4double t);
+    void SetBoronFraction(G4double f);
 
 private:
     void DefineMaterials();
     void DefineCommands();
+    void BuildGrapheneMaterial();
 
     G4double    fGrapheneThickness = 5*um;
     G4double    fKaptonThickness   = 9*um;
+    G4double    fBoronFraction     = 0.05;   // fracción másica de B-10 (0–1)
     G4Material* fGrapheneMat       = nullptr;
+    G4Element*  fElB_enriched      = nullptr;
     G4bool      fGeometryBuilt     = false;
 
     // SDs: creados una vez, reutilizados en cada reinit.
