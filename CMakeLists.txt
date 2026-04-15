@@ -18,6 +18,7 @@ set(SOURCES
     src/EventAction.cc     
     src/CaptureSD.cc 
     src/CaptureHit.cc
+    src/SteppingAction.cc
 )
 
 # --- Ejecutable principal ---

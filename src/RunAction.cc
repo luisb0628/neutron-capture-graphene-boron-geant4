@@ -11,98 +11,107 @@ RunAction::~RunAction() {}
 
 void RunAction::BeginOfRunAction(const G4Run*)
 {
-  auto analysisManager = G4AnalysisManager::Instance();
-  G4cout << "Usando " << analysisManager->GetType() << " como backend de análisis" << G4endl;
+    fNeutronsCaptured = 0;
 
-  // --- Archivo ROOT principal ---
-  analysisManager->OpenFile("output.root");
+    auto analysisManager = G4AnalysisManager::Instance();
+    G4cout << "Using " << analysisManager->GetType() << " as analysis backend" << G4endl;
 
-  // --- Histogramas ---
-  analysisManager->CreateH1("GamaEnergy_Transmited", "Espectro de energia de gammas en el transmited",
-                            1000, 0., 10.*MeV); // ID 0
-  analysisManager->CreateH1("AlphaEnergy", "Energia de particulas alfa", 
-                            1000, 0., 10.*MeV); // ID 1
-  analysisManager->CreateH1("LitioEnergy", "Energia de iones de litio", 
-                            1000, 0., 10.*MeV); // ID 2
-  analysisManager->CreateH1("GammaEnergy", "Energia de rayos gamma", 
-                            1000, 0., 10.*MeV); // ID 3
-  analysisManager->CreateH1("AlphaTheta", "Distribucion angular de particulas alfa (theta)",
-                            180, 0., 180.); // ID 4 
+    analysisManager->OpenFile("output.root");
 
-  // ============================================================
-  // Ntuple para partículas transmitidas (neutrones y gammas)
-  // ============================================================
-  analysisManager->CreateNtuple("GammaNeutronData", "Partículas transmitidas (neutrones y gammas)");
-  analysisManager->CreateNtupleIColumn("EventID");           // 0
-  analysisManager->CreateNtupleIColumn("TrackID");           // 1
-  analysisManager->CreateNtupleIColumn("ParentID");          // 2
-  analysisManager->CreateNtupleSColumn("ParticleType");      // 3
-  analysisManager->CreateNtupleDColumn("KineticEnergy_MeV"); // 4
-  analysisManager->CreateNtupleDColumn("PosX_mm");           // 5
-  analysisManager->CreateNtupleDColumn("PosY_mm");           // 6
-  analysisManager->CreateNtupleDColumn("PosZ_mm");           // 7
-  analysisManager->CreateNtupleDColumn("DirX");              // 8
-  analysisManager->CreateNtupleDColumn("DirY");              // 9
-  analysisManager->CreateNtupleDColumn("DirZ");              // 10
-  analysisManager->CreateNtupleDColumn("Time_ns");           // 11
-  analysisManager->CreateNtupleSColumn("VolumeName");        // 12
-  analysisManager->CreateNtupleSColumn("CreatorName");       // 13
-  analysisManager->FinishNtuple();
+    // ============================================================
+    // NTUPLE 0 — ParticulasDetector
+    // Partículas que llegan al detector sensible (detrás del grafeno).
+    // VertexVolume indica el origen: "graphene" (captura B-10) o "kapton"
+    // (interacciones del Kapton que generaron la partícula).
+    // ============================================================
+    analysisManager->CreateNtuple("ParticulasDetector",
+        "Particulas que alcanzan el detector; VertexVolume indica su origen");
 
-  // ============================================================
-  // Ntuple para partículas de captura (ya existente)
-  // ============================================================
-  analysisManager->CreateNtuple("CaptureData", "Datos de particulas de captura");
-  analysisManager->CreateNtupleIColumn("EventID");
-  analysisManager->CreateNtupleIColumn("TrackID");
-  analysisManager->CreateNtupleIColumn("ParentID");
-  analysisManager->CreateNtupleSColumn("ParticleType");
-  analysisManager->CreateNtupleIColumn("RegionType");
-  analysisManager->CreateNtupleDColumn("KineticEnergy_MeV");
-  analysisManager->CreateNtupleDColumn("Edep_MeV");
-  analysisManager->CreateNtupleDColumn("PosX_mm");
-  analysisManager->CreateNtupleDColumn("PosY_mm");
-  analysisManager->CreateNtupleDColumn("PosZ_mm");
-  analysisManager->CreateNtupleDColumn("DirX");
-  analysisManager->CreateNtupleDColumn("DirY");
-  analysisManager->CreateNtupleDColumn("DirZ");
-  analysisManager->CreateNtupleDColumn("StepLength_mm");
-  analysisManager->CreateNtupleDColumn("Time_ns");
-  analysisManager->CreateNtupleDColumn("Theta_deg");
-  analysisManager->CreateNtupleSColumn("VolumeName");
-  analysisManager->CreateNtupleSColumn("CreatorName");  
-  analysisManager->CreateNtupleSColumn("ProcessName");
-  analysisManager->FinishNtuple();
+    analysisManager->CreateNtupleIColumn("EventID");           // 0
+    analysisManager->CreateNtupleSColumn("ParticleType");      // 1
+    analysisManager->CreateNtupleDColumn("KineticEnergy_keV"); // 2
+    analysisManager->CreateNtupleDColumn("DirX");              // 3
+    analysisManager->CreateNtupleDColumn("DirY");              // 4
+    analysisManager->CreateNtupleDColumn("DirZ");              // 5
+    analysisManager->CreateNtupleSColumn("VertexVolume");      // 6  origen de la partícula
+    analysisManager->CreateNtupleSColumn("CreatorProcess");    // 7
+    analysisManager->CreateNtupleIColumn("TargetZ");           // 8
+    analysisManager->CreateNtupleIColumn("TargetA");           // 9
 
-  // --- Archivo ASCII de salida ---
-  outputFile.open("generated_particles.txt");
-  if (!outputFile.is_open()) {
-      G4Exception("RunAction::BeginOfRunAction", "FileError", FatalException,
-                  "No se pudo abrir generated_particles.txt para escritura");
-  } else {
-      G4cout << "\nArchivo de partículas generado: generated_particles.txt\n" << G4endl;
-      outputFile << "# EventID  TrackID  ParentID  Particle  Energy(MeV)  "
-                 << "X(mm)  Y(mm)  Z(mm)  DirX  DirY  DirZ  Time(ns)  Process\n";
-  }
+    analysisManager->FinishNtuple(); // ID = 0
+
+    // ============================================================
+    // NTUPLE 1 — ProductosCaptura
+    // Partículas creadas por captura neutrónica en el grafeno (B-10).
+    // Una entrada por cada secundaria nacida en el grafeno.
+    // ============================================================
+    analysisManager->CreateNtuple("ProductosCaptura",
+        "Secundarias nacidas en grafeno por captura de neutron en B-10");
+
+    analysisManager->CreateNtupleIColumn("EventID");           // 0
+    analysisManager->CreateNtupleSColumn("ParticleType");      // 1
+    analysisManager->CreateNtupleDColumn("KineticEnergy_MeV"); // 2
+    analysisManager->CreateNtupleDColumn("Edep_MeV");          // 3  deposición en primer paso
+    analysisManager->CreateNtupleDColumn("DirX");              // 4
+    analysisManager->CreateNtupleDColumn("DirY");              // 5
+    analysisManager->CreateNtupleDColumn("DirZ");              // 6
+    analysisManager->CreateNtupleDColumn("StepLength_um");     // 7  longitud del primer paso
+    analysisManager->CreateNtupleSColumn("CreatorProcess");    // 8
+    analysisManager->CreateNtupleIColumn("TargetZ");           // 9
+    analysisManager->CreateNtupleIColumn("TargetA");           // 10
+
+    analysisManager->FinishNtuple(); // ID = 1
+
+    // ============================================================
+    // NTUPLE 2 — RangoIones
+    // Desplazamiento total de alfa y Li-7 desde su creación hasta
+    // que se detienen. Mide cuánto penetran en el material.
+    // ============================================================
+    analysisManager->CreateNtuple("RangoIones",
+        "Rango total de iones alfa y Li-7 creados en el grafeno");
+
+    analysisManager->CreateNtupleIColumn("EventID");           // 0
+    analysisManager->CreateNtupleSColumn("ParticleType");      // 1
+    analysisManager->CreateNtupleDColumn("VertexEnergy_MeV"); // 2
+    analysisManager->CreateNtupleDColumn("TrackLength_um");   // 3
+    analysisManager->CreateNtupleSColumn("CreatorProcess");   // 4
+
+    analysisManager->FinishNtuple(); // ID = 2
+
+    // ============================================================
+    // Archivo ASCII — ProductosCaptura (inspección rápida sin ROOT)
+    // ============================================================
+    outputFile.open("generated_particles.txt");
+    if (!outputFile.is_open()) {
+        G4Exception("RunAction::BeginOfRunAction", "FileError", FatalException,
+                    "Could not open generated_particles.txt for writing");
+    } else {
+        G4cout << "\nASCII output file: generated_particles.txt\n" << G4endl;
+        outputFile << "# EventID Particle KinEnergy_MeV Edep_MeV"
+                   << " DirX DirY DirZ StepLen_um CreatorProcess TargetZ TargetA\n";
+    }
 }
 
 void RunAction::EndOfRunAction(const G4Run* run)
 {
-  auto analysisManager = G4AnalysisManager::Instance();
+    auto analysisManager = G4AnalysisManager::Instance();
+    analysisManager->Write();
+    analysisManager->CloseFile();
 
-  // --- Escribir y cerrar ROOT ---
-  analysisManager->Write();
-  analysisManager->CloseFile();
+    if (outputFile.is_open()) {
+        outputFile.close();
+        G4cout << "ASCII file saved: generated_particles.txt" << G4endl;
+    }
 
-  // --- Cerrar archivo ASCII ---
-  if (outputFile.is_open()) {
-      outputFile.close();
-      G4cout << "\nArchivo ASCII guardado: generated_particles.txt" << G4endl;
-  }
+    G4int totalEvents = run->GetNumberOfEvent();
+    G4double efficiency = (totalEvents > 0)
+        ? 100.0 * fNeutronsCaptured / totalEvents
+        : 0.0;
 
-  // --- Estadísticas ---
-  G4cout << "\n=== ESTADÍSTICAS DE LA SIMULACIÓN ===" << G4endl;
-  G4cout << "Eventos procesados: " << run->GetNumberOfEvent() << G4endl;
-  G4cout << "\nArchivo ROOT guardado: output.root" << G4endl;
-  G4cout << "=====================================" << G4endl;
+    G4cout << "\n=== SIMULATION STATISTICS ===" << G4endl;
+    G4cout << "Neutrons fired:    " << totalEvents << G4endl;
+    G4cout << "Captures (B-10):   " << fNeutronsCaptured << G4endl;
+    G4cout << "Capture efficiency: " << efficiency << " %" << G4endl;
+    G4cout << "ROOT file: output.root" << G4endl;
+    G4cout << "==============================\n" << G4endl;
 }

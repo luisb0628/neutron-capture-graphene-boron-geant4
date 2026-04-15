@@ -3,7 +3,7 @@
 
 #include "G4UserRunAction.hh"
 #include "globals.hh"
-#include <fstream>   // <-- necesario para std::ofstream
+#include <fstream>
 
 class RunAction : public G4UserRunAction
 {
@@ -14,9 +14,15 @@ public:
     void BeginOfRunAction(const G4Run*) override;
     void EndOfRunAction(const G4Run*) override;
 
-    // === NUEVO ===
-    // Archivo ASCII para guardar las partículas generadas (α, Li, γ)
+    // Contador de capturas neutrónicas (una captura = una alpha registrada)
+    void IncrementCaptures() { ++fNeutronsCaptured; }
+    G4int GetCaptureCount() const { return fNeutronsCaptured; }
+
+    // Archivo ASCII de salida
     std::ofstream outputFile;
+
+private:
+    G4int fNeutronsCaptured = 0;
 };
 
 #endif

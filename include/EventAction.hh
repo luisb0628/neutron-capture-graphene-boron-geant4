@@ -15,8 +15,6 @@ class EventAction : public G4UserEventAction
     virtual void BeginOfEventAction(const G4Event*);
     virtual void EndOfEventAction(const G4Event*);
 
-    void RecordNeutronEnergy(G4double energy);
-
   private:
     RunAction* fRunAction;
 };

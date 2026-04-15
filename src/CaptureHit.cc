@@ -16,7 +16,9 @@ CaptureHit::CaptureHit()
       fKineticEnergy(0.),
       fProcessName(""),
       fVolumeName(""),
-      fRegionType(-1)
+      fRegionType(-1),
+      fTargetZ(-1),          // <--- nuevos campos
+      fTargetA(-1)
 {}
 
 CaptureHit::~CaptureHit() = default;
@@ -24,33 +26,44 @@ CaptureHit::~CaptureHit() = default;
 CaptureHit::CaptureHit(const CaptureHit& right)
     : G4VHit()
 {
-    fTrackID = right.fTrackID;
-    fParticleName = right.fParticleName;
-    fParticleType = right.fParticleType;
-    fEdep = right.fEdep;
-    fStepLength = right.fStepLength;
-    fPos = right.fPos;
-    fTime = right.fTime;
+    fTrackID       = right.fTrackID;
+    fParticleName  = right.fParticleName;
+    fParticleType  = right.fParticleType;
+    fEdep          = right.fEdep;
+    fStepLength    = right.fStepLength;
+    fPos           = right.fPos;
+    fTime          = right.fTime;
     fKineticEnergy = right.fKineticEnergy;
-    fProcessName = right.fProcessName;
-    fVolumeName = right.fVolumeName;
-    fRegionType = right.fRegionType;
+    fProcessName   = right.fProcessName;
+    fVolumeName    = right.fVolumeName;
+    fRegionType    = right.fRegionType;
+
+    // nuevos campos
+    fTargetZ       = right.fTargetZ;
+    fTargetA       = right.fTargetA;
 }
 
 const CaptureHit& CaptureHit::operator=(const CaptureHit& right)
 {
-    if (this == &right) return *this;
-    fTrackID = right.fTrackID;
-    fParticleName = right.fParticleName;
-    fParticleType = right.fParticleType;
-    fEdep = right.fEdep;
-    fStepLength = right.fStepLength;
-    fPos = right.fPos;
-    fTime = right.fTime;
+    if (this == &right)
+        return *this;
+
+    fTrackID       = right.fTrackID;
+    fParticleName  = right.fParticleName;
+    fParticleType  = right.fParticleType;
+    fEdep          = right.fEdep;
+    fStepLength    = right.fStepLength;
+    fPos           = right.fPos;
+    fTime          = right.fTime;
     fKineticEnergy = right.fKineticEnergy;
-    fProcessName = right.fProcessName;
-    fVolumeName = right.fVolumeName;
-    fRegionType = right.fRegionType;
+    fProcessName   = right.fProcessName;
+    fVolumeName    = right.fVolumeName;
+    fRegionType    = right.fRegionType;
+
+    // nuevos campos
+    fTargetZ       = right.fTargetZ;
+    fTargetA       = right.fTargetA;
+
     return *this;
 }
 
@@ -73,5 +86,7 @@ void CaptureHit::Print()
            << " Process: " << fProcessName
            << " Volume: " << fVolumeName
            << " RegionType: " << fRegionType
+           << " TargetZ: " << fTargetZ        // <--- nuevo
+           << " TargetA: " << fTargetA        // <--- nuevo
            << G4endl;
 }

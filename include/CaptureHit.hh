@@ -1,11 +1,10 @@
-#ifndef CAPTUREHIT_HH
-#define CAPTUREHIT_HH
+#ifndef CaptureHit_h
+#define CaptureHit_h 1
 
 #include "G4VHit.hh"
-#include "G4ThreeVector.hh"
-#include "globals.hh"
+#include "G4THitsCollection.hh"
 #include "G4Allocator.hh"
-#include "G4THitsCollection.hh"  // <-- necesario para la colección
+#include "G4ThreeVector.hh"
 
 class CaptureHit : public G4VHit
 {
@@ -17,37 +16,50 @@ public:
     G4bool operator==(const CaptureHit&) const;
 
     inline void* operator new(size_t);
-    inline void operator delete(void*);
+    inline void  operator delete(void*);
+
+    // ==========================
+    // Setters
+    // ==========================
+    void SetTrackID(G4int id)              { fTrackID = id; }
+    void SetParticleName(const G4String& s){ fParticleName = s; }
+    void SetParticleType(G4int type)       { fParticleType = type; }
+    void SetEdep(G4double e)               { fEdep = e; }
+    void SetStepLength(G4double l)         { fStepLength = l; }
+    void SetPos(const G4ThreeVector& p)    { fPos = p; }
+    void SetTime(G4double t)               { fTime = t; }
+    void SetKineticEnergy(G4double e)      { fKineticEnergy = e; }
+    void SetProcessName(const G4String& p) { fProcessName = p; }
+    void SetVolumeName(const G4String& v)  { fVolumeName = v; }
+    void SetRegionType(G4int t)            { fRegionType = t; }
+
+    // NUEVOS setters
+    void SetTargetZ(G4int Z)               { fTargetZ = Z; }
+    void SetTargetA(G4int A)               { fTargetA = A; }
+
+    // ==========================
+    // Getters
+    // ==========================
+    G4int        GetTrackID()        const { return fTrackID; }
+    G4String     GetParticleName()   const { return fParticleName; }
+    G4int        GetParticleType()   const { return fParticleType; }
+    G4double     GetEdep()           const { return fEdep; }
+    G4double     GetStepLength()     const { return fStepLength; }
+    G4ThreeVector GetPos()           const { return fPos; }
+    G4double     GetTime()           const { return fTime; }
+    G4double     GetKineticEnergy()  const { return fKineticEnergy; }
+    G4String     GetProcessName()    const { return fProcessName; }
+    G4String     GetVolumeName()     const { return fVolumeName; }
+    G4int        GetRegionType()     const { return fRegionType; }
+
+    // NUEVOS getters
+    G4int        GetTargetZ()        const { return fTargetZ; }
+    G4int        GetTargetA()        const { return fTargetA; }
 
     void Print() override;
 
-    // --- Setters ---
-    void SetTrackID(G4int id) { fTrackID = id; }
-    void SetParticleName(const G4String& name) { fParticleName = name; }
-    void SetParticleType(G4int type) { fParticleType = type; }
-    void SetEdep(G4double edep) { fEdep = edep; }
-    void SetStepLength(G4double length) { fStepLength = length; }
-    void SetPos(const G4ThreeVector& pos) { fPos = pos; }
-    void SetTime(G4double t) { fTime = t; }
-    void SetKineticEnergy(G4double e) { fKineticEnergy = e; }
-    void SetProcessName(const G4String& name) { fProcessName = name; }
-    void SetVolumeName(const G4String& name) { fVolumeName = name; }
-    void SetRegionType(G4int val) { fRegionType = val; } // NUEVO
-
-    // --- Getters ---
-    G4int GetTrackID() const { return fTrackID; }
-    const G4String& GetParticleName() const { return fParticleName; }
-    G4int GetParticleType() const { return fParticleType; }
-    G4double GetEdep() const { return fEdep; }
-    G4double GetStepLength() const { return fStepLength; }
-    const G4ThreeVector& GetPos() const { return fPos; }
-    G4double GetTime() const { return fTime; }
-    G4double GetKineticEnergy() const { return fKineticEnergy; }
-    const G4String& GetProcessName() const { return fProcessName; }
-    const G4String& GetVolumeName() const { return fVolumeName; }
-    G4int GetRegionType() const { return fRegionType; }
-
 private:
+    // Datos existentes
     G4int fTrackID;
     G4String fParticleName;
     G4int fParticleType;
@@ -58,25 +70,28 @@ private:
     G4double fKineticEnergy;
     G4String fProcessName;
     G4String fVolumeName;
-    G4int fRegionType; // 0 = graphene, 1 = capture
+    G4int fRegionType;
+
+    // NUEVOS CAMPOS
+    G4int fTargetZ;   // núm. atómico del objetivo
+    G4int fTargetA;   // núm. másico del objetivo
 };
 
-// --- Allocator global ---
+// =========================================
+// Global allocator
+// =========================================
 extern G4ThreadLocal G4Allocator<CaptureHit>* CaptureHitAllocator;
 
 inline void* CaptureHit::operator new(size_t)
 {
     if (!CaptureHitAllocator)
         CaptureHitAllocator = new G4Allocator<CaptureHit>;
-    return (void*)CaptureHitAllocator->MallocSingle();
+    return (void*) CaptureHitAllocator->MallocSingle();
 }
 
 inline void CaptureHit::operator delete(void* hit)
 {
     CaptureHitAllocator->FreeSingle((CaptureHit*)hit);
 }
-
-// --- Definir el tipo de colección de hits (debe ir después de la clase) ---
-typedef G4THitsCollection<CaptureHit> CaptureHitsCollection;
 
 #endif

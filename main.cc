@@ -3,8 +3,7 @@
 #include "QGSP_BERT_HP.hh"
 #include "G4VisExecutive.hh"
 #include "G4UIExecutive.hh"
-#include "G4ScoringManager.hh"
-#include "Randomize.hh"  // Importante para semillas aleatorias
+#include "Randomize.hh"
 
 #include "ActionInitialization.hh"
 #include "DetectorConstruction.hh"
@@ -22,9 +21,6 @@ int main(int argc, char** argv) {
 
         // Crear Run Manager
         auto* runManager = new G4RunManager();
-
-        // Activar sistema de scoring (útil para análisis)
-        G4ScoringManager::GetScoringManager();
 
         // Construcción del detector
         runManager->SetUserInitialization(new DetectorConstruction());
