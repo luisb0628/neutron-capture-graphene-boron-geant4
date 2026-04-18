@@ -14,6 +14,7 @@ import os
 import sys
 import subprocess
 import shutil
+import numpy as np
 from pathlib import Path
 
 # ── Rutas ────────────────────────────────────────────────────────────────────
@@ -23,7 +24,7 @@ EXECUTABLE  = BUILD_DIR / "Film_graphene"
 
 # ── Parámetros de barrido ─────────────────────────────────────────────────────
 # Fracción másica de B-10 (0–1). Se puede ajustar libremente.
-BORON_FRACTIONS = [0.01, 0.02, 0.03, 0.05, 0.07, 0.10, 0.15, 0.20, 0.25, 0.30]
+BORON_FRACTIONS = list(range(1, 50, 2))
 
 # Espesor de grafeno fijo (en µm) — usar el óptimo de la barrida en espesor
 GRAPHENE_UM = 20
@@ -42,7 +43,7 @@ def check_prerequisites():
 # ── Nombre de archivo ROOT para una fracción dada ─────────────────────────────
 def root_name(fraction: float) -> str:
     """Convierte 0.05 → 'output_B5.00pct.root' (dos decimales)."""
-    pct = fraction * 100
+    pct = fraction 
     return f"output_B{pct:.2f}pct.root"
 
 
@@ -128,12 +129,12 @@ def main():
     print(f"\nProyecto  : {PROJECT_DIR}")
     print(f"Build     : {BUILD_DIR}")
     print(f"Grafeno   : {GRAPHENE_UM} µm (fijo)")
-    print(f"Boro      : {[f'{f*100:.2f}%' for f in BORON_FRACTIONS]}")
+    print(f"Boro      : {[f'{f:.2f}%' for f in BORON_FRACTIONS]}")
     print(f"Neutrones : {N_NEUTRONS} por simulación\n")
 
     results = {}
     for f in BORON_FRACTIONS:
-        ok = run_simulation(f)
+        ok = run_simulation(f/100)
         results[f] = "OK" if ok else "FAILED"
 
     # ── Resumen final ──────────────────────────────────────────────────────────
