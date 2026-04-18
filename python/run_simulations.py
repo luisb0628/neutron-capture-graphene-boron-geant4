@@ -21,7 +21,7 @@ EXECUTABLE  = BUILD_DIR / "Film_graphene"
 MACROS_DIR  = PROJECT_DIR / "macros"
 
 # Parámetros de barrido
-THICKNESSES_UM = list(range(5, 65, 5))   # 5, 10, 15, …, 60
+THICKNESSES_UM = list(range(1, 100, 2))   # 5, 10, 15, …, 60
 N_NEUTRONS     = 100000
 KAPTON_UM      = 129   # espesor de kapton fijo
 
