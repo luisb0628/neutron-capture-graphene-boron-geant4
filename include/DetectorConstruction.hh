@@ -23,6 +23,8 @@ public:
     void SetGrapheneThickness(G4double t);
     void SetKaptonThickness(G4double t);
     void SetBoronFraction(G4double f);
+    void SetOrder(const G4String& order);
+    void SetGrapheneEnabled(G4bool enabled);
 
 private:
     void DefineMaterials();
@@ -31,16 +33,16 @@ private:
 
     G4double    fGrapheneThickness = 5*um;
     G4double    fKaptonThickness   = 9*um;
-    G4double    fBoronFraction     = 0.05;   // fracción másica de B-10 (0–1)
+    G4double    fBoronFraction     = 0.05;
+    G4bool      fGrapheneEnabled   = true;
+    G4bool      fKaptonFirst       = true;   // true = kapton antes del grafeno
     G4Material* fGrapheneMat       = nullptr;
     G4Element*  fElB_enriched      = nullptr;
     G4bool      fGeometryBuilt     = false;
 
-    // SDs: creados una vez, reutilizados en cada reinit.
     CaptureSD*     fCaptureSD     = nullptr;
     TransmittedSD* fTransmittedSD = nullptr;
 
-    // LVs: guardados en Construct() para evitar búsqueda por nombre en ConstructSDandField().
     G4LogicalVolume* fLogicGraphene = nullptr;
     G4LogicalVolume* fLogicDet      = nullptr;
 

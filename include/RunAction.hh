@@ -18,8 +18,9 @@ public:
     void IncrementCaptures() { ++fNeutronsCaptured; }
     G4int GetCaptureCount() const { return fNeutronsCaptured; }
 
-    // Archivo ASCII de salida
-    std::ofstream outputFile;
+    // Archivos ASCII de salida
+    std::ofstream outputFile;        // generated_particles.txt  (nacidos en grafeno)
+    std::ofstream transmittedFile;   // transmitted_particles.txt (todo lo que llega al detector)
 
 private:
     G4int fNeutronsCaptured = 0;

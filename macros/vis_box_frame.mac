@@ -1,0 +1,30 @@
+# vis_box_frame.mac — exporta geometría sólida sin trayectorias (overlay del video)
+/control/macroPath ../macros
+/control/verbose 0
+/run/verbose 0
+/event/verbose 0
+/tracking/verbose 0
+
+/detector/grapheneThickness 500 um
+/detector/kaptonThickness   1000 um
+/detector/boronFraction     0.05
+/detector/order             kaptonFirst
+/detector/enableGraphene    true
+
+/run/initialize
+
+/vis/open OGLSX 1280x720
+/vis/viewer/set/background 0 0 0 1
+/vis/viewer/set/viewpointThetaPhi 80 20
+/vis/viewer/set/style surface
+
+/vis/geometry/set/colour graphene 0 0.2 0.5 1.0 1.0
+/vis/geometry/set/colour kapton   0 0.8 0.5 0.1 1.0
+
+/vis/scene/create
+/vis/scene/add/volume
+/vis/drawVolume
+/vis/enable
+/vis/viewer/refresh
+/vis/ogl/set/exportFormat eps
+/vis/ogl/export box_frame.eps

@@ -23,7 +23,7 @@ MACROS_DIR  = PROJECT_DIR / "macros"
 # Parámetros de barrido
 THICKNESSES_UM = list(range(1, 100, 2))   # 5, 10, 15, …, 60
 N_NEUTRONS     = 100000
-KAPTON_UM      = 129   # espesor de kapton fijo
+KAPTON_UM      = 125   # espesor de kapton fijo
 
 # ── Verificaciones previas ────────────────────────────────────────────────────
 def check_prerequisites():
@@ -34,7 +34,10 @@ def check_prerequisites():
 
 
 # ── Generar macro temporal ────────────────────────────────────────────────────
-def make_macro(thickness_um: int) -> str:
+def make_macro(thickness_um: int,
+               order: str = "grapheneFirst",
+               enable_graphene: bool = True) -> str:
+    graphene_flag = "true" if enable_graphene else "false"
     content = f"""/control/verbose 0
 /run/verbose 0
 /event/verbose 0
@@ -42,12 +45,11 @@ def make_macro(thickness_um: int) -> str:
 
 /detector/grapheneThickness {thickness_um} um
 /detector/kaptonThickness   {KAPTON_UM} um
+/detector/boronFraction     0.05
+/detector/order             {order}
+/detector/enableGraphene    {graphene_flag}
 
-/gun/particle neutron
-/gun/energy 0.025 eV
-/gun/position 0 0 -1.5 cm
-/gun/direction 0 0 1
-/gun/number 1
+/run/initialize
 
 /run/beamOn {N_NEUTRONS}
 """

@@ -1,8 +1,22 @@
-# Ignorar carpeta de compilación
-/build/
+# Compilación
+build/
 
-# Ignorar carpeta de análisis
-/Analysis/
+# Análisis
+Analysis/
 
-/python/plots
-/python/plots_boron
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.ipynb_checkpoints/
+
+# Carpetas de plots generadas
+python/plots/
+python/plots_boron/
+python/plots_3configs/
+python/plots_gamma_boron/
+
+# Archivos temporales del editor
+*.swp
+*.swo
+*~

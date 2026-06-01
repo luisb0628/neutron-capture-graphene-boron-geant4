@@ -2,6 +2,7 @@
 #include "G4Material.hh"
 #include "G4NistManager.hh"
 #include "G4Box.hh"
+#include "G4Tubs.hh"
 #include "G4LogicalVolume.hh"
 #include "G4PVPlacement.hh"
 #include "G4SDManager.hh"
@@ -90,12 +91,25 @@ void DetectorConstruction::SetKaptonThickness(G4double t)
 void DetectorConstruction::SetBoronFraction(G4double f)
 {
     fBoronFraction = f;
-    BuildGrapheneMaterial();   // crear/recuperar material con nueva fracción
+    BuildGrapheneMaterial();
     if (fGeometryBuilt) {
-        // Actualizar el LV inmediatamente para que la próxima reinit use el material correcto
         if (fLogicGraphene) fLogicGraphene->SetMaterial(fGrapheneMat);
         G4RunManager::GetRunManager()->ReinitializeGeometry();
     }
+}
+
+void DetectorConstruction::SetOrder(const G4String& order)
+{
+    fKaptonFirst = (order != "grapheneFirst");
+    if (fGeometryBuilt)
+        G4RunManager::GetRunManager()->ReinitializeGeometry();
+}
+
+void DetectorConstruction::SetGrapheneEnabled(G4bool enabled)
+{
+    fGrapheneEnabled = enabled;
+    if (fGeometryBuilt)
+        G4RunManager::GetRunManager()->ReinitializeGeometry();
 }
 
 // ======================================================
@@ -123,12 +137,24 @@ void DetectorConstruction::DefineCommands()
         "Fracción másica de B-10 en el grafeno (0–1, e.g. 0.05 = 5 %)")
         .SetParameterName("fraction", false)
         .SetRange("fraction > 0 && fraction < 1");
+
+    fMessenger->DeclareMethod("order",
+        &DetectorConstruction::SetOrder,
+        "Orden de capas: kaptonFirst (default) o grapheneFirst")
+        .SetParameterName("order", false);
+
+    fMessenger->DeclareMethod("enableGraphene",
+        &DetectorConstruction::SetGrapheneEnabled,
+        "Habilitar capa de grafeno: true (default) o false")
+        .SetParameterName("enable", false);
 }
 
 G4VPhysicalVolume* DetectorConstruction::Construct() {
     auto nist = G4NistManager::Instance();
 
-    G4cout << "\n[Geometria] Grafeno: " << fGrapheneThickness/um << " um"
+    G4cout << "\n[Geometria]"
+           << "  Orden: "   << (fKaptonFirst ? "kapton→grafeno" : "grafeno→kapton")
+           << "  |  Grafeno: " << (fGrapheneEnabled ? G4String(std::to_string(fGrapheneThickness/um)+" um") : G4String("desactivado"))
            << "  |  Kapton: " << fKaptonThickness/um << " um\n" << G4endl;
 
     // --- Mundo ---
@@ -137,31 +163,47 @@ G4VPhysicalVolume* DetectorConstruction::Construct() {
     auto logicWorld = new G4LogicalVolume(solidWorld, worldMat, "World");
     auto physWorld  = new G4PVPlacement(0, G4ThreeVector(), logicWorld, "World", 0, false, 0);
 
-    // --- Film Kapton (ANTES del grafeno — el neutrón lo atraviesa primero) ---
     G4double grapheneHalfZ = fGrapheneThickness / 2.0;
     G4double kaptonHalfZ   = fKaptonThickness   / 2.0;
     G4Material* kaptonMat  = nist->FindOrBuildMaterial("G4_KAPTON");
+    const G4double detRadius = 1.3*cm;
 
-    G4double kaptonZ = -(grapheneHalfZ + kaptonHalfZ);
+    // --- Apilar capas desde stackStart hacia +Z ---
+    // Las primarias se lanzan siempre desde z = -1.5 mm (aguas arriba)
+    G4double zCursor = -0.5*mm;   // cara frontal de la primera capa
+
     auto solidkapton = new G4Box("kapton", 1.5*cm, 1.5*cm, kaptonHalfZ);
     auto logickapton = new G4LogicalVolume(solidkapton, kaptonMat, "kapton");
-    new G4PVPlacement(0, G4ThreeVector(0,0,kaptonZ), logickapton, "kapton", logicWorld, false, 0);
 
-    // --- Film de grafeno (fGrapheneMat creado en DefineMaterials) ---
-    auto solidgraphene = new G4Box("graphene", 1*cm, 1*cm, grapheneHalfZ);
-    fLogicGraphene = new G4LogicalVolume(solidgraphene, fGrapheneMat, "graphene");
-    new G4PVPlacement(0, G4ThreeVector(0,0,0), fLogicGraphene, "graphene", logicWorld, false, 0);
+    fLogicGraphene = nullptr;
 
-    // --- Detector plano (después del grafeno) ---
-    G4double detThickness = 0.5*cm;
-    G4double detHalfZ     = detThickness / 2.0;
-    G4double detZ         = grapheneHalfZ + detHalfZ;
-    auto solidDet = new G4Box("Detector", 1.5*cm, 1.5*cm, detHalfZ);
+    auto placeKapton = [&]() {
+        G4double center = zCursor + kaptonHalfZ;
+        new G4PVPlacement(0, G4ThreeVector(0,0,center), logickapton, "kapton", logicWorld, false, 0);
+        zCursor += 2.0*kaptonHalfZ;
+    };
+
+    auto placeGraphene = [&]() {
+        if (!fGrapheneEnabled) return;
+        auto solidG = new G4Tubs("graphene", 0., detRadius, grapheneHalfZ, 0., 360.*deg);
+        fLogicGraphene = new G4LogicalVolume(solidG, fGrapheneMat, "graphene");
+        G4double center = zCursor + grapheneHalfZ;
+        new G4PVPlacement(0, G4ThreeVector(0,0,center), fLogicGraphene, "graphene", logicWorld, false, 0);
+        zCursor += 2.0*grapheneHalfZ;
+    };
+
+    if (fKaptonFirst) { placeKapton(); placeGraphene(); }
+    else              { placeGraphene(); placeKapton(); }
+
+    // --- Detector plano (scoring, siempre al final de la pila) ---
+    G4double detHalfZ = 0.5*cm / 2.0;
+    G4double detZ     = zCursor + detHalfZ;
+    auto solidDet = new G4Tubs("Detector", 0., detRadius, detHalfZ, 0., 360.*deg);
     fLogicDet = new G4LogicalVolume(solidDet, nist->FindOrBuildMaterial("G4_AIR"), "Detector");
     new G4PVPlacement(0, G4ThreeVector(0,0,detZ), fLogicDet, "Detector", logicWorld, false, 0);
 
     // --- Límites de paso ---
-    fLogicGraphene->SetUserLimits(new G4UserLimits(0.1*um));
+    if (fLogicGraphene) fLogicGraphene->SetUserLimits(new G4UserLimits(0.1*um));
     logickapton->SetUserLimits(new G4UserLimits(0.01*mm));
     fLogicDet->SetUserLimits(new G4UserLimits(0.01*mm));
 
@@ -179,23 +221,23 @@ G4VPhysicalVolume* DetectorConstruction::Construct() {
     cuts->SetProductionCut(0.01*mm, G4ProductionCuts::GetIndex("neutron"));
     cuts->SetProductionCut(0.01*mm, G4ProductionCuts::GetIndex("gamma"));
     cuts->SetProductionCut(0.01*mm, G4ProductionCuts::GetIndex("e-"));
-    region->AddRootLogicalVolume(fLogicGraphene);
+    if (fLogicGraphene) region->AddRootLogicalVolume(fLogicGraphene);
     region->AddRootLogicalVolume(logickapton);
     region->AddRootLogicalVolume(fLogicDet);
     region->SetProductionCuts(cuts);
 
     // --- Atributos visuales ---
-    auto visGraphene = new G4VisAttributes(G4Colour(0.0, 0.0, 1.0, 0.7)); // Azul
-    visGraphene->SetForceSolid(true);
-    fLogicGraphene->SetVisAttributes(visGraphene);
+    if (fLogicGraphene) {
+        auto visGraphene = new G4VisAttributes(G4Colour(0.0, 0.0, 1.0, 0.7)); // Azul
+        visGraphene->SetForceSolid(true);
+        fLogicGraphene->SetVisAttributes(visGraphene);
+    }
 
     auto visKapton = new G4VisAttributes(G4Colour(1.0, 0.7, 0.3, 0.4)); // Naranja
     visKapton->SetForceSolid(true);
     logickapton->SetVisAttributes(visKapton);
 
-    auto visDetector = new G4VisAttributes(G4Colour(0.0, 1.0, 0.0, 0.2)); // Verde
-    visDetector->SetForceSolid(true);
-    fLogicDet->SetVisAttributes(visDetector);
+    fLogicDet->SetVisAttributes(G4VisAttributes::GetInvisible());
 
     fGeometryBuilt = true;
     return physWorld;
@@ -207,15 +249,12 @@ void DetectorConstruction::ConstructSDandField() {
     // Los SDs se crean UNA sola vez (primera inicialización).
     // En reinicializaciones, fCaptureSD y fTransmittedSD ya están válidos
     // y solo se reasignan a los nuevos volúmenes lógicos.
-    if (!fCaptureSD) {
-        fCaptureSD = new CaptureSD("GrapheneSD", "GrapheneHitsCollection");
-        sdman->AddNewDetector(fCaptureSD);
-    }
-    if (fLogicGraphene) {
+    if (fGrapheneEnabled && fLogicGraphene) {
+        if (!fCaptureSD) {
+            fCaptureSD = new CaptureSD("GrapheneSD", "GrapheneHitsCollection");
+            sdman->AddNewDetector(fCaptureSD);
+        }
         fLogicGraphene->SetSensitiveDetector(fCaptureSD);
-    } else {
-        G4Exception("DetectorConstruction::ConstructSDandField", "SD001",
-                    JustWarning, "fLogicGraphene is null.");
     }
 
     if (!fTransmittedSD) {

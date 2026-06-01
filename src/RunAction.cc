@@ -33,10 +33,13 @@ void RunAction::BeginOfRunAction(const G4Run*)
     analysisManager->CreateNtupleDColumn("DirX");              // 3
     analysisManager->CreateNtupleDColumn("DirY");              // 4
     analysisManager->CreateNtupleDColumn("DirZ");              // 5
-    analysisManager->CreateNtupleSColumn("VertexVolume");      // 6  origen de la partícula
+    analysisManager->CreateNtupleSColumn("VertexVolume");      // 6
     analysisManager->CreateNtupleSColumn("CreatorProcess");    // 7
     analysisManager->CreateNtupleIColumn("TargetZ");           // 8
     analysisManager->CreateNtupleIColumn("TargetA");           // 9
+    analysisManager->CreateNtupleDColumn("PosX_cm");           // 10
+    analysisManager->CreateNtupleDColumn("PosY_cm");           // 11
+    analysisManager->CreateNtupleDColumn("PosZ_cm");           // 12
 
     analysisManager->FinishNtuple(); // ID = 0
 
@@ -79,16 +82,29 @@ void RunAction::BeginOfRunAction(const G4Run*)
     analysisManager->FinishNtuple(); // ID = 2
 
     // ============================================================
-    // Archivo ASCII — ProductosCaptura (inspección rápida sin ROOT)
+    // Archivo ASCII — ProductosCaptura (nacidos en grafeno)
     // ============================================================
     outputFile.open("generated_particles.txt");
     if (!outputFile.is_open()) {
         G4Exception("RunAction::BeginOfRunAction", "FileError", FatalException,
                     "Could not open generated_particles.txt for writing");
     } else {
-        G4cout << "\nASCII output file: generated_particles.txt\n" << G4endl;
+        G4cout << "\nASCII output: generated_particles.txt\n" << G4endl;
         outputFile << "# EventID Particle KinEnergy_MeV Edep_MeV"
                    << " DirX DirY DirZ StepLen_um CreatorProcess TargetZ TargetA\n";
+    }
+
+    // ============================================================
+    // Archivo ASCII — ParticulasTransmitidas (todo lo que llega al detector)
+    // ============================================================
+    transmittedFile.open("transmitted_particles.txt");
+    if (!transmittedFile.is_open()) {
+        G4Exception("RunAction::BeginOfRunAction", "FileError", FatalException,
+                    "Could not open transmitted_particles.txt for writing");
+    } else {
+        G4cout << "ASCII output: transmitted_particles.txt\n" << G4endl;
+        transmittedFile << "# EventID Particle KinEnergy_MeV"
+                        << " DirX DirY DirZ VertexVolume CreatorProcess TargetZ TargetA\n";
     }
 }
 
@@ -101,6 +117,10 @@ void RunAction::EndOfRunAction(const G4Run* run)
     if (outputFile.is_open()) {
         outputFile.close();
         G4cout << "ASCII file saved: generated_particles.txt" << G4endl;
+    }
+    if (transmittedFile.is_open()) {
+        transmittedFile.close();
+        G4cout << "ASCII file saved: transmitted_particles.txt" << G4endl;
     }
 
     G4int totalEvents = run->GetNumberOfEvent();

@@ -27,8 +27,8 @@ EXECUTABLE  = BUILD_DIR / "Film_graphene"
 BORON_FRACTIONS = list(range(1, 50, 2))
 
 # Espesor de grafeno fijo (en µm) — usar el óptimo de la barrida en espesor
-GRAPHENE_UM = 20
-KAPTON_UM   = 129   # espesor de kapton (fijo)
+GRAPHENE_UM = 10
+KAPTON_UM   = 125   # espesor de kapton (fijo)
 N_NEUTRONS  = 100_000
 
 
@@ -43,12 +43,15 @@ def check_prerequisites():
 # ── Nombre de archivo ROOT para una fracción dada ─────────────────────────────
 def root_name(fraction: float) -> str:
     """Convierte 0.05 → 'output_B5.00pct.root' (dos decimales)."""
-    pct = fraction 
+    pct = fraction
     return f"output_B{pct:.2f}pct.root"
 
 
 # ── Generar macro temporal ────────────────────────────────────────────────────
-def make_macro(fraction: float) -> str:
+def make_macro(fraction: float,
+               order: str = "kaptonFirst",
+               enable_graphene: bool = True) -> str:
+    graphene_flag = "true" if enable_graphene else "false"
     return f"""/control/verbose 0
 /run/verbose 0
 /event/verbose 0
@@ -57,12 +60,10 @@ def make_macro(fraction: float) -> str:
 /detector/grapheneThickness {GRAPHENE_UM} um
 /detector/kaptonThickness   {KAPTON_UM} um
 /detector/boronFraction     {fraction}
+/detector/order             {order}
+/detector/enableGraphene    {graphene_flag}
 
-/gun/particle neutron
-/gun/energy 0.025 eV
-/gun/position 0 0 -1.5 cm
-/gun/direction 0 0 1
-/gun/number 1
+/run/initialize
 
 /run/beamOn {N_NEUTRONS}
 """

@@ -1,4 +1,5 @@
 #include "TransmittedSD.hh"
+#include "RunAction.hh"
 
 #include "G4Step.hh"
 #include "G4Track.hh"
@@ -11,6 +12,8 @@
 #include "G4VProcess.hh"
 #include "G4HadronicProcess.hh"
 #include "G4Nucleus.hh"
+#include "G4RunManager.hh"
+#include "G4UserRunAction.hh"
 
 // ======================================================
 // Constructor / Destructor
@@ -44,13 +47,12 @@ G4bool TransmittedSD::ProcessHits(G4Step* step, G4TouchableHistory*)
     // Información general de la partícula
     // ====================================================
     G4String particleName = track->GetDefinition()->GetParticleName();
-    if (particleName == "neutron")
-        return false;
 
     G4int eventID = G4EventManager::GetEventManager()
                         ->GetConstCurrentEvent()->GetEventID();
 
     G4double kinE = post->GetKineticEnergy() / keV;
+    G4ThreeVector pos = pre->GetPosition();
     G4ThreeVector dir = track->GetMomentumDirection();
 
     // Volumen donde nació la partícula: identifica si vino del grafeno o del Kapton
@@ -87,8 +89,28 @@ G4bool TransmittedSD::ProcessHits(G4Step* step, G4TouchableHistory*)
     analysis->FillNtupleSColumn(0, 7, creatorName);
     analysis->FillNtupleIColumn(0, 8, targetZ);
     analysis->FillNtupleIColumn(0, 9, targetA);
+    analysis->FillNtupleDColumn(0, 10, pos.x() / cm);
+    analysis->FillNtupleDColumn(0, 11, pos.y() / cm);
+    analysis->FillNtupleDColumn(0, 12, pos.z() / cm);
 
     analysis->AddNtupleRow(0);
+
+    // ====================================================
+    // Escribir al archivo ASCII transmitted_particles.txt
+    // ====================================================
+    {
+        auto* runAction = static_cast<RunAction*>(
+            const_cast<G4UserRunAction*>(
+                G4RunManager::GetRunManager()->GetUserRunAction()));
+        if (runAction && runAction->transmittedFile.is_open()) {
+            runAction->transmittedFile
+                << eventID << " " << particleName << " "
+                << post->GetKineticEnergy() / MeV << " "
+                << dir.x() << " " << dir.y() << " " << dir.z() << " "
+                << vertexVolume << " " << creatorName << " "
+                << targetZ << " " << targetA << "\n";
+        }
+    }
 
     return true;
 }

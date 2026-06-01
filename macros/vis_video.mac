@@ -1,0 +1,64 @@
+# vis_video.mac — video de captura neutrónica en grafeno dopado con B-10
+/control/macroPath ../macros
+/control/verbose 0
+/run/verbose 0
+/event/verbose 0
+/tracking/verbose 0
+
+# Espesores engrosados para que los films sean visibles en el video
+/detector/grapheneThickness 500 um
+/detector/kaptonThickness   1000 um
+/detector/boronFraction     0.05
+/detector/order             kaptonFirst
+/detector/enableGraphene    true
+
+/run/initialize
+
+# ── Ventana ──────────────────────────────────────────────────────────────────
+/vis/open OGLSX 1280x720
+/vis/viewer/set/background 0 0 0 1
+
+# Vista desde el lado — se ven los films de canto
+/vis/viewer/set/viewpointThetaPhi 80 20
+
+# Wireframe: las trayectorias no quedan tapadas por las caras de los volúmenes
+/vis/viewer/set/style wireframe
+/vis/geometry/set/forceSolid graphene 0
+/vis/geometry/set/forceSolid kapton   0
+
+# Colores de la geometría
+/vis/geometry/set/colour graphene 0 0.2 0.5 1.0 1.0
+/vis/geometry/set/colour kapton   0 0.8 0.5 0.1 1.0
+
+# ── Escena ───────────────────────────────────────────────────────────────────
+/vis/scene/create
+/vis/scene/add/volume
+/vis/drawVolume
+/vis/scene/add/trajectories smooth
+/vis/scene/add/hits
+/vis/scene/endOfEventAction accumulate
+/vis/scene/endOfRunAction   accumulate
+
+# ── Colores por partícula ─────────────────────────────────────────────────────
+/vis/modeling/trajectories/create/drawByParticleID
+/vis/modeling/trajectories/drawByParticleID-0/set neutron white
+/vis/modeling/trajectories/drawByParticleID-0/set gamma   yellow
+/vis/modeling/trajectories/drawByParticleID-0/set e-      red
+/vis/modeling/trajectories/drawByParticleID-0/set alpha   cyan
+/vis/modeling/trajectories/drawByParticleID-0/set Li7     green
+/vis/modeling/trajectories/drawByParticleID-0/set proton  magenta
+
+# ── Decoraciones ─────────────────────────────────────────────────────────────
+/vis/set/textColour green
+/vis/set/textLayout right
+/vis/scene/add/text2D 0.9 -0.9 18 ! ! B-10 Graphene — Neutron Capture
+/vis/set/textLayout
+/vis/set/textColour
+/vis/scene/add/axes 0 0 -2 2 mm
+
+/vis/enable
+/vis/viewer/refresh
+/vis/ogl/set/exportFormat eps
+
+# ── Loop de frames ───────────────────────────────────────────────────────────
+/control/loop vis_video_frame.mac i 1 120 1

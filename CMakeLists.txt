@@ -4,6 +4,9 @@ project(NeutronBeam)
 # --- Encontrar Geant4 ---
 find_package(Geant4 REQUIRED ui_all vis_all analysis)
 
+# --- Encontrar ROOT (para leer AmBePhaseSpace.root en PrimaryGeneratorAction) ---
+find_package(ROOT REQUIRED COMPONENTS Core RIO Tree)
+
 # --- Incluir directorios de encabezados ---
 include(${Geant4_USE_FILE})
 include_directories(${PROJECT_SOURCE_DIR}/include)
@@ -24,8 +27,9 @@ set(SOURCES
 # --- Ejecutable principal ---
 add_executable(Film_graphene main.cc ${SOURCES})
 
-# --- Enlazar librerías de Geant4 ---
-target_link_libraries(Film_graphene ${Geant4_LIBRARIES})
+# --- Enlazar librerías de Geant4 + ROOT ---
+target_link_libraries(Film_graphene ${Geant4_LIBRARIES} ROOT::Core ROOT::RIO ROOT::Tree)
+target_include_directories(Film_graphene PRIVATE ${ROOT_INCLUDE_DIRS})
 
 # --- Copiar macros automáticamente al build ---
 file(GLOB MACRO_FILES "${PROJECT_SOURCE_DIR}/macros/*.mac")
