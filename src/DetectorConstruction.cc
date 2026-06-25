@@ -166,13 +166,14 @@ G4VPhysicalVolume* DetectorConstruction::Construct() {
     G4double grapheneHalfZ = fGrapheneThickness / 2.0;
     G4double kaptonHalfZ   = fKaptonThickness   / 2.0;
     G4Material* kaptonMat  = nist->FindOrBuildMaterial("G4_KAPTON");
-    const G4double detRadius = 1.3*cm;
+    const G4double detRadius    = 1.3*cm;
+    const G4double kaptonRadius = 1.5*cm;
 
     // --- Apilar capas desde stackStart hacia +Z ---
     // Las primarias se lanzan siempre desde z = -1.5 mm (aguas arriba)
     G4double zCursor = -0.5*mm;   // cara frontal de la primera capa
 
-    auto solidkapton = new G4Box("kapton", 1.5*cm, 1.5*cm, kaptonHalfZ);
+    auto solidkapton = new G4Tubs("kapton", 0., kaptonRadius, kaptonHalfZ, 0., 360.*deg);
     auto logickapton = new G4LogicalVolume(solidkapton, kaptonMat, "kapton");
 
     fLogicGraphene = nullptr;
@@ -228,7 +229,7 @@ G4VPhysicalVolume* DetectorConstruction::Construct() {
 
     // --- Atributos visuales ---
     if (fLogicGraphene) {
-        auto visGraphene = new G4VisAttributes(G4Colour(0.0, 0.0, 1.0, 0.7)); // Azul
+        auto visGraphene = new G4VisAttributes(G4Colour(1.0, 1.0, 1.0, 0.7)); // Blanco
         visGraphene->SetForceSolid(true);
         fLogicGraphene->SetVisAttributes(visGraphene);
     }

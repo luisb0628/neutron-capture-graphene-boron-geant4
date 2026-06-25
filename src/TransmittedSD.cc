@@ -51,13 +51,9 @@ G4bool TransmittedSD::ProcessHits(G4Step* step, G4TouchableHistory*)
     G4int eventID = G4EventManager::GetEventManager()
                         ->GetConstCurrentEvent()->GetEventID();
 
-    G4double kinE = post->GetKineticEnergy() / keV;
+    G4double kinE = post->GetKineticEnergy() / MeV;
     G4ThreeVector pos = pre->GetPosition();
     G4ThreeVector dir = track->GetMomentumDirection();
-
-    // Volumen donde nació la partícula: identifica si vino del grafeno o del Kapton
-    const G4LogicalVolume* vtxLV = track->GetLogicalVolumeAtVertex();
-    G4String vertexVolume = vtxLV ? vtxLV->GetName() : "unknown";
 
     // Proceso creador
     G4String creatorName = "primary";
@@ -85,13 +81,12 @@ G4bool TransmittedSD::ProcessHits(G4Step* step, G4TouchableHistory*)
     analysis->FillNtupleDColumn(0, 3, dir.x());
     analysis->FillNtupleDColumn(0, 4, dir.y());
     analysis->FillNtupleDColumn(0, 5, dir.z());
-    analysis->FillNtupleSColumn(0, 6, vertexVolume);   // origen: "graphene" o "kapton"
-    analysis->FillNtupleSColumn(0, 7, creatorName);
-    analysis->FillNtupleIColumn(0, 8, targetZ);
-    analysis->FillNtupleIColumn(0, 9, targetA);
-    analysis->FillNtupleDColumn(0, 10, pos.x() / cm);
-    analysis->FillNtupleDColumn(0, 11, pos.y() / cm);
-    analysis->FillNtupleDColumn(0, 12, pos.z() / cm);
+    analysis->FillNtupleDColumn(0, 6, pos.x() / cm);
+    analysis->FillNtupleDColumn(0, 7, pos.y() / cm);
+    analysis->FillNtupleDColumn(0, 8, pos.z() / cm);
+    analysis->FillNtupleSColumn(0, 9, creatorName);
+    analysis->FillNtupleIColumn(0, 10, targetZ);
+    analysis->FillNtupleIColumn(0, 11, targetA);
 
     analysis->AddNtupleRow(0);
 
@@ -105,10 +100,10 @@ G4bool TransmittedSD::ProcessHits(G4Step* step, G4TouchableHistory*)
         if (runAction && runAction->transmittedFile.is_open()) {
             runAction->transmittedFile
                 << eventID << " " << particleName << " "
-                << post->GetKineticEnergy() / MeV << " "
+                << kinE << " "
                 << dir.x() << " " << dir.y() << " " << dir.z() << " "
-                << vertexVolume << " " << creatorName << " "
-                << targetZ << " " << targetA << "\n";
+                << pos.x() / cm << " " << pos.y() / cm << " " << pos.z() / cm << " "
+                << creatorName << " " << targetZ << " " << targetA << "\n";
         }
     }
 

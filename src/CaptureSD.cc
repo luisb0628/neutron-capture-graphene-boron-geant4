@@ -81,18 +81,12 @@ G4bool CaptureSD::ProcessHits(G4Step* step, G4TouchableHistory*)
     G4ThreeVector dir = track->GetMomentumDirection();
     G4double time = track->GetGlobalTime();
 
-    // Longitud del primer paso (real)
-    G4double firstStepLength = step->GetStepLength();
-
-    // Deposición de energía en este paso
-    G4double edep = step->GetTotalEnergyDeposit();
 
     auto particle = track->GetDefinition();
     G4String pname = particle->GetParticleName();
 
     auto eventID  = G4RunManager::GetRunManager()->GetCurrentEvent()->GetEventID();
     G4int trackID  = track->GetTrackID();
-    G4int parentID = track->GetParentID();
 
     // =====================================================
     // Procesos
@@ -135,14 +129,15 @@ G4bool CaptureSD::ProcessHits(G4Step* step, G4TouchableHistory*)
     analysis->FillNtupleIColumn(1, 0, eventID);
     analysis->FillNtupleSColumn(1, 1, particleLabel);
     analysis->FillNtupleDColumn(1, 2, vertexE / MeV);
-    analysis->FillNtupleDColumn(1, 3, edep / MeV);
-    analysis->FillNtupleDColumn(1, 4, dir.x());
-    analysis->FillNtupleDColumn(1, 5, dir.y());
-    analysis->FillNtupleDColumn(1, 6, dir.z());
-    analysis->FillNtupleDColumn(1, 7, firstStepLength / um);
-    analysis->FillNtupleSColumn(1, 8, creatorName);
-    analysis->FillNtupleIColumn(1, 9, targetZ);
-    analysis->FillNtupleIColumn(1,10, targetA);
+    analysis->FillNtupleDColumn(1, 3, dir.x());
+    analysis->FillNtupleDColumn(1, 4, dir.y());
+    analysis->FillNtupleDColumn(1, 5, dir.z());
+    analysis->FillNtupleDColumn(1, 6, pos.x() / cm);
+    analysis->FillNtupleDColumn(1, 7, pos.y() / cm);
+    analysis->FillNtupleDColumn(1, 8, pos.z() / cm);
+    analysis->FillNtupleSColumn(1, 9, creatorName);
+    analysis->FillNtupleIColumn(1, 10, targetZ);
+    analysis->FillNtupleIColumn(1, 11, targetA);
 
     analysis->AddNtupleRow(1);
 
@@ -166,9 +161,9 @@ G4bool CaptureSD::ProcessHits(G4Step* step, G4TouchableHistory*)
         if (runAction && runAction->outputFile.is_open()) {
             runAction->outputFile
                 << eventID << " " << particleLabel << " "
-                << vertexE / MeV << " " << edep / MeV << " "
+                << vertexE / MeV << " "
                 << dir.x() << " " << dir.y() << " " << dir.z() << " "
-                << firstStepLength / um << " "
+                << pos.x() / cm << " " << pos.y() / cm << " " << pos.z() / cm << " "
                 << creatorName << " " << targetZ << " " << targetA << "\n";
         }
     }

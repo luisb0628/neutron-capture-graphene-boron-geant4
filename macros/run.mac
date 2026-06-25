@@ -6,14 +6,14 @@
 # --- Espesores ---
 /detector/grapheneThickness 5 um
 /detector/kaptonThickness   125 um
-/detector/boronFraction     0.05
+/detector/boronFraction     0.3
 
 # --- Orden de capas: kaptonFirst (default) o grapheneFirst ---
 /detector/order kaptonFirst
 
 # --- Grafeno activo: true (default) o false ---
-/detector/enableGraphene true
+/detector/enableGraphene false
 
 /run/initialize
 
-/run/beamOn 100000
+/run/beamOn 1000000

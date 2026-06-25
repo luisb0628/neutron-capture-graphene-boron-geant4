@@ -23,7 +23,7 @@ PrimaryGeneratorAction::PrimaryGeneratorAction()
         auto* def = G4ParticleTable::GetParticleTable()->FindParticle("neutron");
         fFallbackGun->SetParticleDefinition(def);
         fFallbackGun->SetParticleEnergy(0.025*eV);
-        fFallbackGun->SetParticlePosition(G4ThreeVector(0., 0., -0.5*mm));
+        fFallbackGun->SetParticlePosition(G4ThreeVector(0., 0., -0.501*mm));
         fFallbackGun->SetParticleMomentumDirection(G4ThreeVector(0., 0., 1.));
         G4cout << "[PrimaryGenerator] Usando pistola de respaldo (neutrón térmico 0.025 eV).\n";
     } else {
@@ -116,9 +116,9 @@ void PrimaryGeneratorAction::GeneratePrimaries(G4Event* event)
         return;
     }
 
-    // Z fija aguas arriba de todas las capas (stack empieza en -0.5 mm)
+    // Z fija 1 µm antes de la cara frontal del film (stack empieza en -0.5 mm)
     auto* vertex = new G4PrimaryVertex(
-        e.posX_cm * cm, e.posY_cm * cm, -1.5*mm, 0.0);
+        e.posX_cm * cm, e.posY_cm * cm, -0.501*mm, 0.0);
 
     auto* primary = new G4PrimaryParticle(def);
     primary->SetKineticEnergy(e.kinE_eV * eV);

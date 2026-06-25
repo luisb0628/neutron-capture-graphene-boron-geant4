@@ -19,49 +19,48 @@ void RunAction::BeginOfRunAction(const G4Run*)
     analysisManager->OpenFile("output.root");
 
     // ============================================================
-    // NTUPLE 0 — ParticulasDetector
-    // Partículas que llegan al detector sensible (detrás del grafeno).
-    // VertexVolume indica el origen: "graphene" (captura B-10) o "kapton"
-    // (interacciones del Kapton que generaron la partícula).
+    // NTUPLE 0 — ParticulasTransmitidas
+    // Partículas registradas al LLEGAR al detector (boundary entry).
+    // Misma estructura que ProductosCaptura para comparación directa.
     // ============================================================
-    analysisManager->CreateNtuple("ParticulasDetector",
-        "Particulas que alcanzan el detector; VertexVolume indica su origen");
+    analysisManager->CreateNtuple("ParticulasTransmitidas",
+        "Particulas al llegar al detector — pos/energia en la frontera");
 
     analysisManager->CreateNtupleIColumn("EventID");           // 0
     analysisManager->CreateNtupleSColumn("ParticleType");      // 1
-    analysisManager->CreateNtupleDColumn("KineticEnergy_keV"); // 2
+    analysisManager->CreateNtupleDColumn("KineticEnergy_MeV"); // 2
     analysisManager->CreateNtupleDColumn("DirX");              // 3
     analysisManager->CreateNtupleDColumn("DirY");              // 4
     analysisManager->CreateNtupleDColumn("DirZ");              // 5
-    analysisManager->CreateNtupleSColumn("VertexVolume");      // 6
-    analysisManager->CreateNtupleSColumn("CreatorProcess");    // 7
-    analysisManager->CreateNtupleIColumn("TargetZ");           // 8
-    analysisManager->CreateNtupleIColumn("TargetA");           // 9
-    analysisManager->CreateNtupleDColumn("PosX_cm");           // 10
-    analysisManager->CreateNtupleDColumn("PosY_cm");           // 11
-    analysisManager->CreateNtupleDColumn("PosZ_cm");           // 12
+    analysisManager->CreateNtupleDColumn("PosX_cm");           // 6
+    analysisManager->CreateNtupleDColumn("PosY_cm");           // 7
+    analysisManager->CreateNtupleDColumn("PosZ_cm");           // 8
+    analysisManager->CreateNtupleSColumn("CreatorProcess");    // 9
+    analysisManager->CreateNtupleIColumn("TargetZ");           // 10
+    analysisManager->CreateNtupleIColumn("TargetA");           // 11
 
     analysisManager->FinishNtuple(); // ID = 0
 
     // ============================================================
     // NTUPLE 1 — ProductosCaptura
-    // Partículas creadas por captura neutrónica en el grafeno (B-10).
-    // Una entrada por cada secundaria nacida en el grafeno.
+    // Partículas registradas al NACER en el grafeno (vértice de creación).
+    // Misma estructura que ParticulasTransmitidas para comparación directa.
     // ============================================================
     analysisManager->CreateNtuple("ProductosCaptura",
-        "Secundarias nacidas en grafeno por captura de neutron en B-10");
+        "Secundarias al nacer en grafeno — pos/energia en el vertice");
 
     analysisManager->CreateNtupleIColumn("EventID");           // 0
     analysisManager->CreateNtupleSColumn("ParticleType");      // 1
     analysisManager->CreateNtupleDColumn("KineticEnergy_MeV"); // 2
-    analysisManager->CreateNtupleDColumn("Edep_MeV");          // 3  deposición en primer paso
-    analysisManager->CreateNtupleDColumn("DirX");              // 4
-    analysisManager->CreateNtupleDColumn("DirY");              // 5
-    analysisManager->CreateNtupleDColumn("DirZ");              // 6
-    analysisManager->CreateNtupleDColumn("StepLength_um");     // 7  longitud del primer paso
-    analysisManager->CreateNtupleSColumn("CreatorProcess");    // 8
-    analysisManager->CreateNtupleIColumn("TargetZ");           // 9
-    analysisManager->CreateNtupleIColumn("TargetA");           // 10
+    analysisManager->CreateNtupleDColumn("DirX");              // 3
+    analysisManager->CreateNtupleDColumn("DirY");              // 4
+    analysisManager->CreateNtupleDColumn("DirZ");              // 5
+    analysisManager->CreateNtupleDColumn("PosX_cm");           // 6
+    analysisManager->CreateNtupleDColumn("PosY_cm");           // 7
+    analysisManager->CreateNtupleDColumn("PosZ_cm");           // 8
+    analysisManager->CreateNtupleSColumn("CreatorProcess");    // 9
+    analysisManager->CreateNtupleIColumn("TargetZ");           // 10
+    analysisManager->CreateNtupleIColumn("TargetA");           // 11
 
     analysisManager->FinishNtuple(); // ID = 1
 
@@ -90,8 +89,8 @@ void RunAction::BeginOfRunAction(const G4Run*)
                     "Could not open generated_particles.txt for writing");
     } else {
         G4cout << "\nASCII output: generated_particles.txt\n" << G4endl;
-        outputFile << "# EventID Particle KinEnergy_MeV Edep_MeV"
-                   << " DirX DirY DirZ StepLen_um CreatorProcess TargetZ TargetA\n";
+        outputFile << "# EventID Particle KinEnergy_MeV"
+                   << " DirX DirY DirZ PosX_cm PosY_cm PosZ_cm CreatorProcess TargetZ TargetA\n";
     }
 
     // ============================================================
@@ -104,7 +103,7 @@ void RunAction::BeginOfRunAction(const G4Run*)
     } else {
         G4cout << "ASCII output: transmitted_particles.txt\n" << G4endl;
         transmittedFile << "# EventID Particle KinEnergy_MeV"
-                        << " DirX DirY DirZ VertexVolume CreatorProcess TargetZ TargetA\n";
+                        << " DirX DirY DirZ PosX_cm PosY_cm PosZ_cm CreatorProcess TargetZ TargetA\n";
     }
 }
 
