@@ -10,7 +10,7 @@
 /detector/kaptonThickness   1000 um
 /detector/boronFraction     0.05
 /detector/order             kaptonFirst
-/detector/enableGraphene    true
+/detector/enableGraphene    1
 
 /run/initialize
 

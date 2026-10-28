@@ -1,0 +1,29 @@
+/control/verbose 0
+/run/verbose 1
+/event/verbose 0
+/tracking/verbose 0
+
+# --- Fuente: gammas de calibracion Cs-137 (661.657 keV), no neutrones AmBe ---
+# Ver nota completa en run_cs137.mac (14 entradas de phase space disponibles).
+/generator/phaseSpaceFile ../../neutron-thermalization-geant4/build/Cs137PhaseSpace.root
+
+# --- Espesores (igual que run_g.mac) ---
+/detector/grapheneThickness 39 um
+/detector/kaptonThickness   125 um
+/detector/boronFraction     0.05
+
+# --- Oxidacion del grafeno (0 = grafeno pristino, valores por defecto) ---
+/detector/oxygenFraction    0.0
+/detector/hydrogenFraction  0.0
+/detector/grapheneDensity   1.8 g/cm3
+
+# --- Orden de capas: kaptonFirst (default) o grapheneFirst ---
+/detector/order kaptonFirst
+
+# --- Grafeno activo: 1 (default) o 0 ---
+# NOTA: usar 1/0, no true/false -- ver nota igual en run_g.mac.
+/detector/enableGraphene 1
+
+/run/initialize
+
+/run/beamOn 10000000

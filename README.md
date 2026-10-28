@@ -20,7 +20,7 @@ Este proyecto es la segunda etapa de una cadena de simulación:
 ├── include/
 │   ├── DetectorConstruction.hh    # Geometría configurable (orden de capas, espesores)
 │   ├── PrimaryGeneratorAction.hh  # Lee AmBePhaseSpace.root o usa pistola de respaldo
-│   ├── RunAction.hh               # Escribe generated_particles.txt y transmitted_particles.txt
+│   ├── RunAction.hh               # Escribe output.root (ntuples ParticulasTransmitidas/ProductosCaptura/RangoIones)
 │   └── TransmittedSD.hh
 ├── src/
 ├── macros/
@@ -46,7 +46,7 @@ Este proyecto es la segunda etapa de una cadena de simulación:
 - **CMake** ≥ 3.16, **C++17**
 - **Python 3** con: `uproot`, `numpy`, `pandas`, `matplotlib`, `seaborn`, `jupyter`
 - **Ghostscript** (`gs`) y **ffmpeg** — solo para generación de video
-- `AmBePhaseSpace.root` generado por **Neutron_Thermalization** (opcional; sin él usa una pistola de neutrones térmicos de respaldo)
+- `AmBePhaseSpace.root` generado por **Neutron_Thermalization** en `../neutron-thermalization-geant4/build/` (proyecto hermano bajo `Geant4/`; se lee directo de ahí, no hace falta copiarlo — opcional: sin él usa una pistola de neutrones térmicos de respaldo)
 
 ---
 
@@ -71,9 +71,12 @@ cd build
 ```
 
 Genera en `build/`:
-- `output.root` — histogramas y ntuples
-- `generated_particles.txt` — partículas nacidas en el grafeno (alfa, Li-7, gamma 478 keV)
-- `transmitted_particles.txt` — todas las partículas que alcanzan el detector
+- `output.root` — ntuples ROOT:
+  - `ProductosCaptura` — partículas nacidas en el grafeno (alfa, Li-7, gamma 478 keV)
+  - `ParticulasTransmitidas` — todas las partículas que alcanzan el detector
+  - `RangoIones` — rango de iones alfa/Li-7 en el material
+
+El run manager es multihilo (`G4MTRunManager`, usa todos los núcleos disponibles); por eso la salida ya no incluye archivos ASCII (`generated_particles.txt` / `transmitted_particles.txt` de versiones anteriores) — escribir el mismo archivo de texto desde varios hilos worker corrompería los datos. Usa `output.root` (vía `uproot`/`ROOT`) para todo el análisis.
 
 ### Modo interactivo
 
@@ -107,8 +110,8 @@ cd build
 
 ## Fuente de partículas (phase space)
 
-`PrimaryGeneratorAction` lee `AmBePhaseSpace.root` (generado por Neutron_Thermalization) y reproduce el espacio de fase completo de cada partícula: tipo, energía, posición y dirección.  
-Si el archivo no existe, usa una pistola de respaldo con neutrones térmicos de 0.025 eV.
+`PrimaryGeneratorAction` lee `../../neutron-thermalization-geant4/build/AmBePhaseSpace.root` directamente (ruta relativa fija al proyecto hermano — no requiere copiar el archivo) y reproduce el espacio de fase completo de cada partícula: tipo, energía, posición y dirección.  
+Si el archivo no existe en esa ruta, usa una pistola de respaldo con neutrones térmicos de 0.025 eV.
 
 ---
 

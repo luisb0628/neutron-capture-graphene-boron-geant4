@@ -1,0 +1,38 @@
+/control/verbose 0
+/run/verbose 1
+/event/verbose 0
+/tracking/verbose 0
+
+# --- Fuente: gammas de calibracion Cs-137 (661.657 keV), no neutrones AmBe ---
+# Generado por neutron-thermalization-geant4/macros/cs137_only.mac. Solo tiene
+# 14 entradas en el ntuple PhaseSpace (ver Termalizacion_AmBe_analisis.ipynb,
+# Parte 2, Seccion 4: la eficiencia geometrica del gamma hasta ese monitor es
+# muy baja) -- con beamOn=10M cada una de esas 14 entradas se repite
+# ~714,286 veces como punto de partida. La fisica de interaccion en cada
+# evento sigue siendo estocastica (Geant4 no repite el mismo resultado), pero
+# la DIVERSIDAD de condiciones iniciales (energia/posicion/direccion) queda
+# acotada a esos 14 puntos. Util para caracterizar el fondo que el Cs-137
+# aporta al pasar por la misma pila de peliculas, no para estudiar captura
+# en boro (eso necesita neutrones -> usar run.mac/run_g.mac).
+/generator/phaseSpaceFile ../../neutron-thermalization-geant4/build/Cs137PhaseSpace.root
+
+# --- Espesores (igual que run.mac) ---
+/detector/grapheneThickness 39 um
+/detector/kaptonThickness   125 um
+/detector/boronFraction     0.05
+
+# --- Oxidacion del grafeno (0 = grafeno pristino, valores por defecto) ---
+/detector/oxygenFraction    0.0
+/detector/hydrogenFraction  0.0
+/detector/grapheneDensity   1.8 g/cm3
+
+# --- Orden de capas: kaptonFirst (default) o grapheneFirst ---
+/detector/order kaptonFirst
+
+# --- Grafeno activo: 1 (default) o 0 ---
+# NOTA: usar 1/0, no true/false -- ver nota igual en run.mac.
+/detector/enableGraphene 0
+
+/run/initialize
+
+/run/beamOn 10000000

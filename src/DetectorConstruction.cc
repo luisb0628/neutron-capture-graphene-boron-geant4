@@ -19,8 +19,31 @@
 #include "G4Element.hh"
 #include "G4GenericMessenger.hh"
 #include "G4RunManager.hh"
+#include "G4Threading.hh"
 #include <cmath>
 #include <string>
+
+// En Geant4 MT, cada hilo worker REPITE todos los comandos UI ejecutados antes
+// de /run/initialize (incluyendo estos /detector/... personalizados) para
+// mantener su propio estado sincronizado. Como DetectorConstruction es un
+// UNICO objeto compartido entre todos los hilos (Geant4 MT es multi-hilo, no
+// multi-proceso), esa repetición ocurre EN PARALELO en los ~12 hilos worker.
+// Sin este guard, cada Set*() dispara ReinitializeGeometry() concurrentemente
+// desde varios hilos a la vez sobre el mismo objeto -> condicion de carrera
+// que corrompe la geometria (se observo "Grafeno: desactivado" pese a pedir
+// enableGraphene true). El master ya construyo la geometria UNA vez, correcta,
+// antes de que los workers existan; los workers no necesitan (ni deben) volver
+// a reconstruirla.
+static inline G4bool ShouldReinitialize(G4bool geometryBuilt)
+{
+    return geometryBuilt && G4Threading::IsMasterThread();
+}
+
+// Definicion de los miembros estaticos G4ThreadLocal declarados en el header
+// (ver comentario junto a la declaracion): cada hilo worker obtiene su propio
+// CaptureSD/TransmittedSD independiente.
+G4ThreadLocal CaptureSD*     DetectorConstruction::fCaptureSD     = nullptr;
+G4ThreadLocal TransmittedSD* DetectorConstruction::fTransmittedSD = nullptr;
 
 DetectorConstruction::DetectorConstruction()
     : G4VUserDetectorConstruction()
@@ -44,28 +67,47 @@ void DetectorConstruction::DefineMaterials()
     auto B10 = new G4Isotope("B10", 5, 10, 10.0*g/mole);
     auto B11 = new G4Isotope("B11", 5, 11, 11.0*g/mole);
     fElB_enriched = new G4Element("BoronEnriched", "B_enr", 2);
-    fElB_enriched->AddIsotope(B10, 100.*perCent);
-    fElB_enriched->AddIsotope(B11,   0.*perCent);
+    fElB_enriched->AddIsotope(B10, 80.*perCent);
+    fElB_enriched->AddIsotope(B11,   20.*perCent);
 
     BuildGrapheneMaterial();   // crea el material inicial con fBoronFraction
 }
 
-// Crea (o reutiliza si ya existe) el material de grafeno con la fracción de boro actual.
-// Cada fracción distinta genera un material con nombre único en la tabla global.
+// Crea (o reutiliza si ya existe) el material de grafeno con las fracciones actuales
+// de B, O y H. Cada combinacion distinta genera un material con nombre unico en la
+// tabla global. El carbono se ajusta para completar 1.0 (grafeno = C + dopante + oxidacion).
 void DetectorConstruction::BuildGrapheneMaterial()
 {
     auto* nist = G4NistManager::Instance();
 
-    // Nombre único por fracción: e.g. "graphene_B500" = 5.00 % boro
-    G4int fractionPPM = G4int(std::round(fBoronFraction * 1e6));
-    G4String matName  = "graphene_B" + std::to_string(fractionPPM);
+    G4double carbonFraction = 1.0 - fBoronFraction - fOxygenFraction - fHydrogenFraction;
+    if (carbonFraction <= 0.0) {
+        G4Exception("DetectorConstruction::BuildGrapheneMaterial", "Mat001", FatalException,
+                    "boronFraction + oxygenFraction + hydrogenFraction >= 1: no queda carbono.");
+    }
+
+    // Nombre unico por combinacion de fracciones y densidad, e.g.:
+    // "graphene_B50000_O30000_H5000_D1900" = 5% B, 3% O, 0.5% H, densidad 1.90 g/cm3
+    G4int boronPPM    = G4int(std::round(fBoronFraction    * 1e6));
+    G4int oxygenPPM   = G4int(std::round(fOxygenFraction   * 1e6));
+    G4int hydrogenPPM = G4int(std::round(fHydrogenFraction * 1e6));
+    G4int densityX100 = G4int(std::round(fGrapheneDensity / (g/cm3) * 100));
+    G4String matName  = "graphene_B" + std::to_string(boronPPM)
+                       + "_O" + std::to_string(oxygenPPM)
+                       + "_H" + std::to_string(hydrogenPPM)
+                       + "_D" + std::to_string(densityX100);
 
     // Reutilizar si ya fue creado en una corrida anterior
     fGrapheneMat = G4Material::GetMaterial(matName, /*warn=*/false);
     if (!fGrapheneMat) {
-        fGrapheneMat = new G4Material(matName, 2.2*g/cm3, 2);
-        fGrapheneMat->AddElement(nist->FindOrBuildElement("C"), 1.0 - fBoronFraction);
+        G4int nElements = 2 + (fOxygenFraction > 0.0 ? 1 : 0) + (fHydrogenFraction > 0.0 ? 1 : 0);
+        fGrapheneMat = new G4Material(matName, fGrapheneDensity, nElements);
+        fGrapheneMat->AddElement(nist->FindOrBuildElement("C"), carbonFraction);
         fGrapheneMat->AddElement(fElB_enriched,                 fBoronFraction);
+        if (fOxygenFraction > 0.0)
+            fGrapheneMat->AddElement(nist->FindOrBuildElement("O"), fOxygenFraction);
+        if (fHydrogenFraction > 0.0)
+            fGrapheneMat->AddElement(nist->FindOrBuildElement("H"), fHydrogenFraction);
     }
 }
 
@@ -75,24 +117,73 @@ void DetectorConstruction::BuildGrapheneMaterial()
 void DetectorConstruction::SetGrapheneThickness(G4double t)
 {
     fGrapheneThickness = t;
-    // Solo reinicializar si la geometría ya fue construida al menos una vez.
+    // Solo reinicializar si la geometría ya fue construida al menos una vez,
+    // y solo desde el hilo master (ver ShouldReinitialize arriba).
     // Si el comando llega antes de /run/initialize, solo guardamos el valor.
-    if (fGeometryBuilt)
+    if (ShouldReinitialize(fGeometryBuilt))
         G4RunManager::GetRunManager()->ReinitializeGeometry();
 }
 
 void DetectorConstruction::SetKaptonThickness(G4double t)
 {
     fKaptonThickness = t;
-    if (fGeometryBuilt)
+    if (ShouldReinitialize(fGeometryBuilt))
         G4RunManager::GetRunManager()->ReinitializeGeometry();
 }
 
 void DetectorConstruction::SetBoronFraction(G4double f)
 {
+    // Validado aquí (no via G4UIcommand::SetRange) porque el chequeo de rango
+    // COMPUESTO ("fraction > 0 && fraction < 1") falla siempre en algunos
+    // builds de Geant4 (probado en 11.0.0), abortando el macro completo antes
+    // de /run/beamOn incluso con valores válidos como 0.05.
+    if (f <= 0.0 || f >= 1.0) {
+        G4Exception("DetectorConstruction::SetBoronFraction", "Range001", FatalException,
+                    "boronFraction debe estar en (0, 1), e.g. 0.05 = 5%.");
+    }
     fBoronFraction = f;
     BuildGrapheneMaterial();
-    if (fGeometryBuilt) {
+    if (ShouldReinitialize(fGeometryBuilt)) {
+        if (fLogicGraphene) fLogicGraphene->SetMaterial(fGrapheneMat);
+        G4RunManager::GetRunManager()->ReinitializeGeometry();
+    }
+}
+
+void DetectorConstruction::SetOxygenFraction(G4double f)
+{
+    // Ver nota de validación manual en SetBoronFraction().
+    if (f < 0.0 || f >= 1.0) {
+        G4Exception("DetectorConstruction::SetOxygenFraction", "Range001", FatalException,
+                    "oxygenFraction debe estar en [0, 1), e.g. 0.10 = 10%.");
+    }
+    fOxygenFraction = f;
+    BuildGrapheneMaterial();
+    if (ShouldReinitialize(fGeometryBuilt)) {
+        if (fLogicGraphene) fLogicGraphene->SetMaterial(fGrapheneMat);
+        G4RunManager::GetRunManager()->ReinitializeGeometry();
+    }
+}
+
+void DetectorConstruction::SetHydrogenFraction(G4double f)
+{
+    // Ver nota de validación manual en SetBoronFraction().
+    if (f < 0.0 || f >= 1.0) {
+        G4Exception("DetectorConstruction::SetHydrogenFraction", "Range001", FatalException,
+                    "hydrogenFraction debe estar en [0, 1).");
+    }
+    fHydrogenFraction = f;
+    BuildGrapheneMaterial();
+    if (ShouldReinitialize(fGeometryBuilt)) {
+        if (fLogicGraphene) fLogicGraphene->SetMaterial(fGrapheneMat);
+        G4RunManager::GetRunManager()->ReinitializeGeometry();
+    }
+}
+
+void DetectorConstruction::SetGrapheneDensity(G4double d)
+{
+    fGrapheneDensity = d;
+    BuildGrapheneMaterial();
+    if (ShouldReinitialize(fGeometryBuilt)) {
         if (fLogicGraphene) fLogicGraphene->SetMaterial(fGrapheneMat);
         G4RunManager::GetRunManager()->ReinitializeGeometry();
     }
@@ -101,14 +192,14 @@ void DetectorConstruction::SetBoronFraction(G4double f)
 void DetectorConstruction::SetOrder(const G4String& order)
 {
     fKaptonFirst = (order != "grapheneFirst");
-    if (fGeometryBuilt)
+    if (ShouldReinitialize(fGeometryBuilt))
         G4RunManager::GetRunManager()->ReinitializeGeometry();
 }
 
 void DetectorConstruction::SetGrapheneEnabled(G4bool enabled)
 {
     fGrapheneEnabled = enabled;
-    if (fGeometryBuilt)
+    if (ShouldReinitialize(fGeometryBuilt))
         G4RunManager::GetRunManager()->ReinitializeGeometry();
 }
 
@@ -132,11 +223,30 @@ void DetectorConstruction::DefineCommands()
         .SetParameterName("thickness", false)
         .SetRange("thickness > 0");
 
+    // Nota: el rango físico (0,1) de estas 3 fracciones se valida dentro de
+    // cada Set*Fraction() (ver DetectorConstruction.cc), no con .SetRange()
+    // aquí — un .SetRange() COMPUESTO ("a > 0 && a < 1") falla siempre en
+    // algunos builds de Geant4 (11.0.0), abortando el macro antes de beamOn.
     fMessenger->DeclareMethod("boronFraction",
         &DetectorConstruction::SetBoronFraction,
         "Fracción másica de B-10 en el grafeno (0–1, e.g. 0.05 = 5 %)")
-        .SetParameterName("fraction", false)
-        .SetRange("fraction > 0 && fraction < 1");
+        .SetParameterName("fraction", false);
+
+    fMessenger->DeclareMethod("oxygenFraction",
+        &DetectorConstruction::SetOxygenFraction,
+        "Fracción másica de O en el grafeno oxidado (0–1, e.g. 0.10 = 10 %). 0 = grafeno prístino")
+        .SetParameterName("fraction", false);
+
+    fMessenger->DeclareMethod("hydrogenFraction",
+        &DetectorConstruction::SetHydrogenFraction,
+        "Fracción másica de H (-OH, agua intercalada) asociada a la oxidación (0–1)")
+        .SetParameterName("fraction", false);
+
+    fMessenger->DeclareMethodWithUnit("grapheneDensity", "g/cm3",
+        &DetectorConstruction::SetGrapheneDensity,
+        "Densidad del film de grafeno [g/cm3] (baja con la oxidación, default 2.2)")
+        .SetParameterName("density", false)
+        .SetRange("density > 0");
 
     fMessenger->DeclareMethod("order",
         &DetectorConstruction::SetOrder,
@@ -218,8 +328,9 @@ G4VPhysicalVolume* DetectorConstruction::Construct() {
     if (!region) {
         region = new G4Region("DetectorRegion");
     }
+    // Los neutrones no tienen corte de produccion en Geant4 (solo gamma/e-/e+/proton);
+    // GetIndex("neutron") no es un indice valido, por eso no se incluye aqui.
     auto cuts = new G4ProductionCuts();
-    cuts->SetProductionCut(0.01*mm, G4ProductionCuts::GetIndex("neutron"));
     cuts->SetProductionCut(0.01*mm, G4ProductionCuts::GetIndex("gamma"));
     cuts->SetProductionCut(0.01*mm, G4ProductionCuts::GetIndex("e-"));
     if (fLogicGraphene) region->AddRootLogicalVolume(fLogicGraphene);

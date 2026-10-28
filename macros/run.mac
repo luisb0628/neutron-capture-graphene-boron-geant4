@@ -3,17 +3,30 @@
 /event/verbose 0
 /tracking/verbose 0
 
+# --- Fuente: neutrones AmBe (default; explicito aqui para que quede claro) ---
+/generator/phaseSpaceFile ../../neutron-thermalization-geant4/build/AmBePhaseSpace.root
+
 # --- Espesores ---
-/detector/grapheneThickness 5 um
+/detector/grapheneThickness 39 um
 /detector/kaptonThickness   125 um
-/detector/boronFraction     0.3
+/detector/boronFraction     0.05
+
+# --- Oxidacion del grafeno (0 = grafeno pristino, valores por defecto) ---
+# Referencia GO tipica: oxygenFraction 0.15-0.30, hydrogenFraction 0.01-0.03,
+# grapheneDensity 1.8-2.0 g/cm3 (baja por expansion interlaminar)
+/detector/oxygenFraction    0.0
+/detector/hydrogenFraction  0.0
+/detector/grapheneDensity   1.8 g/cm3
 
 # --- Orden de capas: kaptonFirst (default) o grapheneFirst ---
 /detector/order kaptonFirst
 
-# --- Grafeno activo: true (default) o false ---
-/detector/enableGraphene false
+# --- Grafeno activo: 1 (default) o 0 ---
+# NOTA: usar 1/0, no true/false -- el parser de G4GenericMessenger para G4bool
+# en este build de Geant4 (11.0.0) no reconoce "true"/"false" como texto
+# (queda en false silenciosamente), solo "1"/"0".
+/detector/enableGraphene 0
 
 /run/initialize
 
-/run/beamOn 1000000
+/run/beamOn 10000000

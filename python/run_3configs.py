@@ -3,7 +3,7 @@
 run_3configs.py
 ---------------
 Corre Film_graphene en 3 configuraciones y guarda
-transmitted_particles_<config>.txt en build/.
+output_<config>.root en build/ (ntuple "ParticulasTransmitidas").
 
 Configuraciones:
   1. kaptonFirst   — kapton → grafeno → detector
@@ -16,6 +16,8 @@ import sys
 import subprocess
 import shutil
 from pathlib import Path
+
+import uproot
 
 PROJECT_DIR = Path(__file__).resolve().parent.parent
 BUILD_DIR   = PROJECT_DIR / "build"
@@ -49,7 +51,10 @@ CONFIGS = [
 
 
 def make_macro(cfg: dict) -> str:
-    g_flag = "true" if cfg["enable_graphene"] else "false"
+    # "1"/"0", no "true"/"false": el parser de G4bool de G4GenericMessenger
+    # en este build de Geant4 no reconoce las palabras true/false (queda en
+    # false silenciosamente), solo enteros.
+    g_flag = "1" if cfg["enable_graphene"] else "0"
     return f"""/control/verbose 0
 /run/verbose 0
 /event/verbose 0
@@ -93,25 +98,28 @@ def run_config(cfg: dict) -> bool:
     if result.returncode != 0:
         print(f"  [WARN] código de retorno: {result.returncode}")
 
-    # Guardar transmitted_particles.txt con nombre por config
-    src = BUILD_DIR / "transmitted_particles.txt"
-    dst = BUILD_DIR / f"transmitted_{name}.txt"
-    if src.exists():
-        shutil.copy(src, dst)
-        nlines = sum(1 for l in dst.read_text().splitlines() if not l.startswith("#"))
-        print(f"  [OK]  {dst.name}  ({nlines} partículas)")
-    else:
-        print(f"  [ERROR] transmitted_particles.txt no fue generado")
-        return False
-
     # Guardar ROOT con nombre por config
     root_src = BUILD_DIR / "output.root"
     root_dst = BUILD_DIR / f"output_{name}.root"
-    if root_src.exists():
-        shutil.move(str(root_src), str(root_dst))
-        print(f"  [OK]  {root_dst.name}")
+    if not root_src.exists():
+        print(f"  [ERROR] output.root no fue generado")
+        return False
+
+    shutil.move(str(root_src), str(root_dst))
+    n = count_transmitted(root_dst)
+    print(f"  [OK]  {root_dst.name}  ({n} partículas transmitidas)")
 
     return True
+
+
+def count_transmitted(root_path: Path) -> int:
+    """Cuenta las entradas del ntuple ParticulasTransmitidas en un output_<config>.root."""
+    try:
+        with uproot.open(str(root_path)) as f:
+            return f["ParticulasTransmitidas"].num_entries
+    except Exception as e:
+        print(f"  [WARN] No se pudo leer {root_path.name}: {e}")
+        return 0
 
 
 def main():
@@ -132,8 +140,8 @@ def main():
     print("  RESUMEN")
     print(f"{'='*60}")
     for name, status in results.items():
-        f = BUILD_DIR / f"transmitted_{name}.txt"
-        n = sum(1 for l in f.read_text().splitlines() if not l.startswith("#")) if f.exists() else 0
+        root_path = BUILD_DIR / f"output_{name}.root"
+        n = count_transmitted(root_path) if root_path.exists() else 0
         print(f"  {name:<16}  {status}  ({n} partículas transmitidas)")
 
 

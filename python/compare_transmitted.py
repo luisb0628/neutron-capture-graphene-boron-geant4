@@ -2,7 +2,7 @@
 """
 compare_transmitted.py
 -----------------------
-Lee los 3 transmitted_particles_<config>.txt y genera
+Lee los 3 output_<config>.root (ntuple "ParticulasTransmitidas") y genera
 análisis comparativo: tipos de partícula, espectros de energía,
 fracciones de transmisión y origen de las partículas.
 """
@@ -11,6 +11,7 @@ import sys
 from pathlib import Path
 import numpy as np
 import pandas as pd
+import uproot
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
@@ -34,19 +35,26 @@ COLORS = {
     "noGraphene":    "#FF5722",   # naranja
 }
 
-# Columnas del archivo ASCII (ver TransmittedSD.cc)
+# Columnas del ntuple ParticulasTransmitidas (ver TransmittedSD.cc / RunAction.cc)
 COLS = ["EventID", "Particle", "KinEnergy_MeV",
         "DirX", "DirY", "DirZ",
-        "VertexVolume", "CreatorProcess", "TargetZ", "TargetA"]
+        "PosX_cm", "PosY_cm", "PosZ_cm",
+        "CreatorProcess", "TargetZ", "TargetA"]
 
 
 # ── Carga ──────────────────────────────────────────────────────────────────────
 def load(name: str) -> pd.DataFrame:
-    path = BUILD_DIR / f"transmitted_{name}.txt"
+    path = BUILD_DIR / f"output_{name}.root"
     if not path.exists():
         print(f"[WARN] No se encontró {path.name} — saltando.")
         return pd.DataFrame(columns=COLS)
-    df = pd.read_csv(path, sep=r"\s+", comment="#", names=COLS)
+    with uproot.open(str(path)) as f:
+        df = f["ParticulasTransmitidas"].arrays(library="pd")
+    df = df.rename(columns={"ParticleType": "Particle",
+                             "KineticEnergy_MeV": "KinEnergy_MeV"})
+    for col in df.columns:
+        if df[col].dtype == object:
+            df[col] = df[col].apply(lambda x: str(x) if not isinstance(x, str) else x)
     return df
 
 
@@ -161,7 +169,7 @@ def plot_gamma_spectra(dfs):
     print("  Guardado: 04_gamma_spectra.png")
 
 
-# ── Plot 5: origen de las partículas (VertexVolume) ────────────────────────────
+# ── Plot 5: origen de las partículas (proceso creador) ─────────────────────────
 def plot_vertex_volume(dfs):
     fig, axes = plt.subplots(1, 3, figsize=(15, 4))
 
@@ -170,12 +178,12 @@ def plot_vertex_volume(dfs):
         if df.empty:
             ax.set_title(label)
             continue
-        counts = df["VertexVolume"].value_counts()
+        counts = df["CreatorProcess"].value_counts()
         ax.pie(counts.values, labels=counts.index,
                autopct="%1.1f%%", colors=plt.cm.Set3.colors[:len(counts)])
         ax.set_title(label, fontsize=10)
 
-    fig.suptitle("Origen de partículas transmitidas (VertexVolume)", fontsize=12)
+    fig.suptitle("Origen de partículas transmitidas (proceso creador)", fontsize=12)
     fig.tight_layout()
     fig.savefig(OUTPUT_DIR / "05_vertex_volume.png", dpi=150)
     plt.close(fig)

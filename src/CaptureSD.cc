@@ -16,7 +16,6 @@
 #include "G4Nucleus.hh"
 #include "G4Event.hh"
 #include "G4ios.hh"
-#include "G4UserRunAction.hh"
 
 // ======================================================
 // Constructor
@@ -145,27 +144,7 @@ G4bool CaptureSD::ProcessHits(G4Step* step, G4TouchableHistory*)
     // Contar capturas (una alpha = una captura de B-10)
     // =====================================================
     if (pname == "alpha") {
-        auto* runAction = static_cast<RunAction*>(
-            const_cast<G4UserRunAction*>(
-                G4RunManager::GetRunManager()->GetUserRunAction()));
-        if (runAction) runAction->IncrementCaptures();
-    }
-
-    // =====================================================
-    // Escribir al archivo ASCII (misma info que ProductosCaptura)
-    // =====================================================
-    {
-        auto* runAction = static_cast<RunAction*>(
-            const_cast<G4UserRunAction*>(
-                G4RunManager::GetRunManager()->GetUserRunAction()));
-        if (runAction && runAction->outputFile.is_open()) {
-            runAction->outputFile
-                << eventID << " " << particleLabel << " "
-                << vertexE / MeV << " "
-                << dir.x() << " " << dir.y() << " " << dir.z() << " "
-                << pos.x() / cm << " " << pos.y() / cm << " " << pos.z() / cm << " "
-                << creatorName << " " << targetZ << " " << targetA << "\n";
-        }
+        RunAction::IncrementCaptures();
     }
 
     // =====================================================

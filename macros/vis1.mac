@@ -12,7 +12,7 @@
 /detector/order kaptonFirst
 
 # --- Grafeno activo: true (default) o false ---
-/detector/enableGraphene true
+/detector/enableGraphene 1
 
 /run/initialize
 

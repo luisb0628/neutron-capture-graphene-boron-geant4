@@ -3,13 +3,16 @@
 #include "RunAction.hh"
 #include "EventAction.hh"
 #include "SteppingAction.hh"   // ← agregar esto
+#include "GeneratorMessenger.hh"
 
 ActionInitialization::ActionInitialization()
-: G4VUserActionInitialization()
+: G4VUserActionInitialization(), fGeneratorMessenger(new GeneratorMessenger())
 {}
 
 ActionInitialization::~ActionInitialization()
-{}
+{
+    delete fGeneratorMessenger;
+}
 
 void ActionInitialization::BuildForMaster() const
 {

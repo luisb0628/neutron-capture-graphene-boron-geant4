@@ -1,4 +1,5 @@
 #include "PrimaryGeneratorAction.hh"
+#include "PhaseSpaceConfig.hh"
 #include "G4ParticleTable.hh"
 #include "G4ParticleDefinition.hh"
 #include "G4PrimaryVertex.hh"
@@ -15,7 +16,11 @@
 
 PrimaryGeneratorAction::PrimaryGeneratorAction()
 {
-    LoadPhaseSpace("AmBePhaseSpace.root");
+    // Ruta configurable desde el macro (/generator/phaseSpaceFile), default
+    // AmBePhaseSpace.root -- ver PhaseSpaceConfig.hh. Mismo proyecto hermano
+    // bajo Geant4/, no hace falta copiar el .root aquí.
+    const G4String& phaseSpaceFile = PhaseSpaceConfig::GetFilePath();
+    LoadPhaseSpace(phaseSpaceFile);
 
     if (fUseFallback) {
         // Sin archivo ROOT: pistola de neutrones térmicos como respaldo
@@ -28,7 +33,7 @@ PrimaryGeneratorAction::PrimaryGeneratorAction()
         G4cout << "[PrimaryGenerator] Usando pistola de respaldo (neutrón térmico 0.025 eV).\n";
     } else {
         G4cout << "[PrimaryGenerator] Phase space cargado: "
-               << fEntries.size() << " partículas desde AmBePhaseSpace.root\n";
+               << fEntries.size() << " partículas desde " << phaseSpaceFile << "\n";
     }
 }
 

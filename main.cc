@@ -1,9 +1,12 @@
 #include "G4RunManager.hh"
+#include "G4RunManagerFactory.hh"
+#include "G4Threading.hh"
 #include "G4UImanager.hh"
 #include "QGSP_BERT_HP.hh"
 #include "G4VisExecutive.hh"
 #include "G4UIExecutive.hh"
 #include "Randomize.hh"
+#include "TROOT.h"
 
 #include "ActionInitialization.hh"
 #include "DetectorConstruction.hh"
@@ -11,7 +14,12 @@
 int main(int argc, char** argv) {
     // Establecer semilla aleatoria para reproducibilidad
     G4Random::setTheSeed(123456789);
-    
+
+    // PrimaryGeneratorAction lee AmBePhaseSpace.root (TFile/TTree) desde el
+    // constructor de cada hilo worker; sin esto, aperturas de ROOT concurrentes
+    // entre hilos no son seguras.
+    ROOT::EnableThreadSafety();
+
     try {
         // Determinar modo de ejecución
         G4UIExecutive* ui = nullptr;
@@ -19,8 +27,11 @@ int main(int argc, char** argv) {
             ui = new G4UIExecutive(argc, argv);
         }
 
-        // Crear Run Manager
-        auto* runManager = new G4RunManager();
+        // Crear el Run Manager multihilo (usa todos los núcleos disponibles;
+        // cae a modo serial automáticamente si Geant4 no se compiló con MT)
+        G4RunManager* runManager =
+            G4RunManagerFactory::CreateRunManager(G4RunManagerType::MT, false);
+        runManager->SetNumberOfThreads(G4Threading::G4GetNumberOfCores());
 
         // Construcción del detector
         runManager->SetUserInitialization(new DetectorConstruction());
@@ -33,8 +44,16 @@ int main(int argc, char** argv) {
         // Inicialización de acciones de usuario
         runManager->SetUserInitialization(new ActionInitialization());
 
-        // Inicializar el run manager
-        runManager->Initialize();
+        // NOTA 2026-10: NO se llama a runManager->Initialize() aqui. En modo
+        // MT eso crea y arranca los hilos trabajadores de inmediato -- cada
+        // uno construye su PrimaryGeneratorAction (y por lo tanto carga el
+        // .root de phase space) en ESE momento, antes de que la macro llegue
+        // a ejecutar /generator/phaseSpaceFile mas abajo. El comando se
+        // aplicaba, pero demasiado tarde (los hilos ya habian cargado el
+        // archivo por defecto). El propio macro ya trae su /run/initialize
+        // (ver run.mac/run_cs137.mac etc.), que ocurre DESPUES de
+        // /generator/phaseSpaceFile -- igual que en el proyecto hermano
+        // neutron-thermalization-geant4, que nunca llamo Initialize() aqui.
 
         // Sistema de visualización
         auto* visManager = new G4VisExecutive();

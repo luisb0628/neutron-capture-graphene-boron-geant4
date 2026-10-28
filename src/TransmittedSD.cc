@@ -1,5 +1,4 @@
 #include "TransmittedSD.hh"
-#include "RunAction.hh"
 
 #include "G4Step.hh"
 #include "G4Track.hh"
@@ -12,8 +11,6 @@
 #include "G4VProcess.hh"
 #include "G4HadronicProcess.hh"
 #include "G4Nucleus.hh"
-#include "G4RunManager.hh"
-#include "G4UserRunAction.hh"
 
 // ======================================================
 // Constructor / Destructor
@@ -88,24 +85,12 @@ G4bool TransmittedSD::ProcessHits(G4Step* step, G4TouchableHistory*)
     analysis->FillNtupleIColumn(0, 10, targetZ);
     analysis->FillNtupleIColumn(0, 11, targetA);
 
-    analysis->AddNtupleRow(0);
+    // Volumen donde nacio la particula (World = fuente/entorno, graphene, kapton):
+    // permite separar los gammas de captura de los de la fuente y del Kapton.
+    const G4LogicalVolume* vtxLV = track->GetLogicalVolumeAtVertex();
+    analysis->FillNtupleSColumn(0, 12, vtxLV ? vtxLV->GetName() : G4String("World"));
 
-    // ====================================================
-    // Escribir al archivo ASCII transmitted_particles.txt
-    // ====================================================
-    {
-        auto* runAction = static_cast<RunAction*>(
-            const_cast<G4UserRunAction*>(
-                G4RunManager::GetRunManager()->GetUserRunAction()));
-        if (runAction && runAction->transmittedFile.is_open()) {
-            runAction->transmittedFile
-                << eventID << " " << particleName << " "
-                << kinE << " "
-                << dir.x() << " " << dir.y() << " " << dir.z() << " "
-                << pos.x() / cm << " " << pos.y() / cm << " " << pos.z() / cm << " "
-                << creatorName << " " << targetZ << " " << targetA << "\n";
-        }
-    }
+    analysis->AddNtupleRow(0);
 
     return true;
 }
