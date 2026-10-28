@@ -24,6 +24,10 @@
 # NOTA: usar 1/0, no true/false -- ver nota igual en run_g.mac.
 /detector/enableGraphene 1
 
+# Numero de hilos: por defecto se usan todos los nucleos del equipo.
+# Descomentar para fijarlo; debe ir antes de /run/initialize.
+#/run/numberOfThreads 4
+
 /run/initialize
 
 /run/beamOn 10000000

@@ -53,6 +53,27 @@ make -j$(nproc)
 
 El programa usa varios hilos (`G4MTRunManager`) y siempre escribe `output.root` en la carpeta donde se ejecuta. Para conservar varias corridas, renombra el archivo después de cada una. La etapa 3 espera, por ejemplo, `output_run_g.root` y `output_run.root`.
 
+### Número de hilos
+
+El programa corre en varios hilos y, por defecto, usa todos los núcleos del equipo (`SetNumberOfThreads(G4GetNumberOfCores())` en `main.cc`). Hay dos formas de cambiarlo sin tocar el código:
+
+- **En la macro**, antes de `/run/initialize`. Todas las macros de corrida traen la línea comentada:
+
+  ```
+  /run/numberOfThreads 4
+  /run/initialize
+  ```
+
+- **Con una variable de entorno**, que se impone a lo que digan el código y la macro:
+
+  ```bash
+  G4FORCENUMBEROFTHREADS=4 ./Film_graphene ../macros/run_g.mac
+  # dentro de Docker:
+  docker exec -e G4FORCENUMBEROFTHREADS=4 <contenedor> bash -lc "cd ... && ./Film_graphene ../macros/run_g.mac"
+  ```
+
+Para limitar además **qué** núcleos se usan, en Linux se puede lanzar con `taskset -c 0-3 ./Film_graphene ...` o crear el contenedor con `--cpuset-cpus="0-3"`. En ese caso hay que fijar también el número de hilos, porque Geant4 cuenta los núcleos de toda la máquina y lanzaría más hilos que núcleos asignados. Si se corren varias simulaciones a la vez, conviene repartir los núcleos entre ellas. Con otro número de hilos cambian las secuencias de números aleatorios: los resultados son estadísticamente equivalentes, pero no idénticos evento a evento.
+
 ---
 
 ## Macros

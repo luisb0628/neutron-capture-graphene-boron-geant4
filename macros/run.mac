@@ -27,6 +27,10 @@
 # (queda en false silenciosamente), solo "1"/"0".
 /detector/enableGraphene 0
 
+# Numero de hilos: por defecto se usan todos los nucleos del equipo.
+# Descomentar para fijarlo; debe ir antes de /run/initialize.
+#/run/numberOfThreads 4
+
 /run/initialize
 
 /run/beamOn 10000000
