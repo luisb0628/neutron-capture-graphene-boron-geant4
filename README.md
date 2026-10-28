@@ -1,196 +1,112 @@
-# Captura de Neutrones en Grafeno Dopado con Boro y Kapton (Geant4)
+# Captura de neutrones en grafeno dopado con boro sobre Kapton (Geant4)
 
-Simulación Monte Carlo de la **captura de neutrones térmicos** en una estructura de **grafeno dopado con boro (B-10)** sobre soporte de **Kapton** usando Geant4.
+Simulación Monte Carlo en **Geant4** de la captura de neutrones térmicos en una película de **grafeno dopado con ¹⁰B** sobre un soporte de **Kapton**. Los primarios son las partículas que llegan al detector en la etapa de termalización. El programa registra las capturas ¹⁰B(n,α)⁷Li, los productos que nacen en el grafeno y todas las partículas que salen de la película hacia el detector.
 
-Este proyecto es la segunda etapa de una cadena de simulación:
+Es la **segunda etapa** de una cadena de tres simulaciones:
 
-1. **Neutron_Thermalization** — modera neutrones AmBe en parafina y genera `AmBePhaseSpace.root`
-2. **Film_graphene** (este repo) — captura los neutrones en el film grafeno/Kapton y genera partículas secundarias
-3. **Scintillator_Sipm** — detecta las partículas secundarias en un centellador acoplado a un SiPM
+| Etapa | Repositorio | Entrada | Salida |
+|---|---|---|---|
+| 1. Termalización | [neutron-thermalization-geant4](https://github.com/luisb0628/neutron-thermalization-geant4) | — | `AmBePhaseSpace.root`, `Cs137PhaseSpace.root` |
+| 2. Captura | **neutron-capture-graphene-boron-geant4** (este) | phase space de la etapa 1 | `output.root` |
+| 3. Centelleador | [Scintillator_Sipm](https://github.com/luisb0628/Scintillator_Sipm) | `output.root` de esta etapa | `output.root` |
 
 ---
 
-## Contenido del repositorio
+## Física y geometría
 
-```
-.
-├── CMakeLists.txt
-├── main.cc
-├── make_video.sh                  # Pipeline simulación → video MP4
-├── include/
-│   ├── DetectorConstruction.hh    # Geometría configurable (orden de capas, espesores)
-│   ├── PrimaryGeneratorAction.hh  # Lee AmBePhaseSpace.root o usa pistola de respaldo
-│   ├── RunAction.hh               # Escribe output.root (ntuples ParticulasTransmitidas/ProductosCaptura/RangoIones)
-│   └── TransmittedSD.hh
-├── src/
-├── macros/
-│   ├── run.mac                    # Macro principal (batch)
-│   ├── vis1.mac                   # Visualización interactiva
-│   ├── vis_video.mac              # Exporta frames EPS por evento
-│   └── vis_box_frame.mac          # Frame de geometría para overlay de video
-└── python/
-    ├── run_simulations.py         # Barrido de espesor de grafeno (1–99 um)
-    ├── run_3configs.py            # Corre 3 configuraciones de apilado
-    ├── compare_transmitted.py     # Análisis comparativo de las 3 configs
-    ├── accumulate_frames.py       # Acumula frames para el video
-    ├── analysis.ipynb
-    ├── analysis_boron.ipynb
-    └── gamma_boron.ipynb
-```
+**Lista de física:** `QGSP_BERT_HP`, la misma de las tres etapas.
+
+**Reacción de interés.** ¹⁰B(n,α)⁷Li produce un α y un ⁷Li y, en el 93,8 % de las capturas, un γ de 0,4776 MeV de la desexcitación del ⁷Li.
+
+**Geometría.** Discos con el eje en *z*, dentro de un mundo de aire de 20 cm de lado:
+- Kapton de radio 1,5 cm (espesor configurable, 125 µm por defecto en las macros).
+- Grafeno dopado con boro de radio 1,3 cm. Se configuran el espesor, la fracción másica de boro (enriquecido al 80 % en ¹⁰B), la densidad y una oxidación opcional (O e H).
+- Detector de aire de radio 1,3 cm, justo detrás de la película.
+- Orden de las capas configurable: Kapton primero (por defecto) o grafeno primero. El grafeno se puede quitar para tener el caso de referencia sin película o solo con Kapton.
+
+**Primarios.** Cada evento es una partícula de la tabla `PhaseSpace` de la etapa 1. Se descartan las que van hacia atrás y el resto se recorre de forma cíclica. Cada una nace 1 µm antes de la cara frontal de la película, con su energía, su dirección y su posición (*x*, *y*) en el detector de la etapa 1. Si no se encuentra el archivo, se usa una pistola de respaldo de neutrones térmicos de 0,025 eV.
 
 ---
 
 ## Requisitos
 
-- **Geant4** ≥ 10.7 compilado con `ui_all`, `vis_all`, `analysis` y física HP
-- **CMake** ≥ 3.16, **C++17**
-- **Python 3** con: `uproot`, `numpy`, `pandas`, `matplotlib`, `seaborn`, `jupyter`
-- **Ghostscript** (`gs`) y **ffmpeg** — solo para generación de video
-- `AmBePhaseSpace.root` generado por **Neutron_Thermalization** en `../neutron-thermalization-geant4/build/` (proyecto hermano bajo `Geant4/`; se lee directo de ahí, no hace falta copiarlo — opcional: sin él usa una pistola de neutrones térmicos de respaldo)
+- **Geant4 11** con datos de neutrones HP, `analysis` y, para visualizar, `ui_all` y `vis_all`.
+- **CMake** ≥ 3.16 y un compilador **C++17**.
+- **Python 3** con `uproot`, `numpy` y `pandas`, para leer las salidas y correr los barridos.
+- El repositorio de la etapa 1 en la misma carpeta que este, con su `build/` ya generado.
+
+Las corridas de la tesis se hicieron en Docker con la imagen `luisb28/geant4-clase:11.4-python`, montando la carpeta que contiene los tres repositorios en `/workspace`.
 
 ---
 
-## Compilación
+## Compilación y ejecución
 
 ```bash
-source /path/to/geant4/install/bin/geant4.sh
+source /ruta/a/geant4/bin/geant4.sh
 mkdir -p build && cd build
 cmake ..
 make -j$(nproc)
+
+./Film_graphene ../macros/run_g.mac     # Kapton + grafeno con boro, primarios del AmBe
+./Film_graphene                         # modo interactivo con visualización
 ```
+
+El programa usa varios hilos (`G4MTRunManager`) y siempre escribe `output.root` en la carpeta donde se ejecuta. Para conservar varias corridas, renombra el archivo después de cada una. La etapa 3 espera, por ejemplo, `output_run_g.root` y `output_run.root`.
 
 ---
 
-## Ejecución
+## Macros
 
-### Modo batch
+| Macro | Primarios | Película |
+|---|---|---|
+| `macros/run_g.mac` | AmBe (`AmBePhaseSpace.root`) | Kapton + grafeno con boro |
+| `macros/run.mac` | AmBe | solo Kapton (sin grafeno) |
+| `macros/run_cs137_g.mac` | ¹³⁷Cs (`Cs137PhaseSpace.root`) | Kapton + grafeno con boro |
+| `macros/run_cs137.mac` | ¹³⁷Cs | solo Kapton |
+| `macros/vis1.mac`, `vis_*.mac` | — | visualización y video |
 
-```bash
-cd build
-./Film_graphene ../macros/run.mac
-```
+Las macros usan 1×10⁷ primarios, un grafeno de 39 µm con 5 % de boro y 1,8 g/cm³, y un Kapton de 125 µm. La película de referencia de la tesis es de **50 µm con 15 % de boro**. La fijan los scripts de las corridas finales con los comandos de abajo.
 
-Genera en `build/`:
-- `output.root` — ntuples ROOT:
-  - `ProductosCaptura` — partículas nacidas en el grafeno (alfa, Li-7, gamma 478 keV)
-  - `ParticulasTransmitidas` — todas las partículas que alcanzan el detector
-  - `RangoIones` — rango de iones alfa/Li-7 en el material
+### Comandos
 
-El run manager es multihilo (`G4MTRunManager`, usa todos los núcleos disponibles); por eso la salida ya no incluye archivos ASCII (`generated_particles.txt` / `transmitted_particles.txt` de versiones anteriores) — escribir el mismo archivo de texto desde varios hilos worker corrompería los datos. Usa `output.root` (vía `uproot`/`ROOT`) para todo el análisis.
-
-### Modo interactivo
-
-```bash
-cd build
-./Film_graphene
-```
-
----
-
-## Comandos del macro
-
-```bash
-# Espesores
-/detector/grapheneThickness 5 um
-/detector/kaptonThickness   125 um
-/detector/boronFraction     0.05
-
-# Orden de las capas (respecto al haz)
-/detector/order kaptonFirst    # Kapton → Grafeno → Detector (default)
-/detector/order grapheneFirst  # Grafeno → Kapton → Detector
-
-# Deshabilitar el grafeno (solo Kapton, como referencia)
-/detector/enableGraphene false
-
-/run/initialize
-/run/beamOn 100000
-```
+| Comando | Descripción |
+|---|---|
+| `/generator/phaseSpaceFile <ruta>` | Archivo de phase space de la etapa 1 (por defecto `../../neutron-thermalization-geant4/build/AmBePhaseSpace.root`) |
+| `/detector/grapheneThickness <valor> um` | Espesor del grafeno |
+| `/detector/kaptonThickness <valor> um` | Espesor del Kapton |
+| `/detector/boronFraction <0–1>` | Fracción másica de boro en el grafeno |
+| `/detector/grapheneDensity <valor> g/cm3` | Densidad del grafeno |
+| `/detector/oxygenFraction`, `/detector/hydrogenFraction` | Oxidación opcional del grafeno (0 = prístino) |
+| `/detector/order kaptonFirst \| grapheneFirst` | Orden de las capas respecto a la fuente |
+| `/detector/enableGraphene 0 \| 1` | Quita o pone la capa de grafeno |
 
 ---
 
-## Fuente de partículas (phase space)
+## Salida (`output.root`)
 
-`PrimaryGeneratorAction` lee `../../neutron-thermalization-geant4/build/AmBePhaseSpace.root` directamente (ruta relativa fija al proyecto hermano — no requiere copiar el archivo) y reproduce el espacio de fase completo de cada partícula: tipo, energía, posición y dirección.  
-Si el archivo no existe en esa ruta, usa una pistola de respaldo con neutrones térmicos de 0.025 eV.
-
----
-
-## Scripts de Python
-
-### Barrido de espesor (`run_simulations.py`)
-
-Corre la simulación variando el espesor del grafeno de 1 a 99 um en pasos de 2 um.
-
-```bash
-python python/run_simulations.py
-```
-
-Genera `build/output_<X>um.root` por cada espesor.
-
-### 3 configuraciones (`run_3configs.py`)
-
-Corre las tres configuraciones de apilado y guarda los archivos de partículas transmitidas por separado:
-
-| Config | Orden |
-|--------|-------|
-| `kaptonFirst` | Kapton → Grafeno → Detector |
-| `grapheneFirst` | Grafeno → Kapton → Detector |
-| `noGraphene` | Solo Kapton → Detector |
-
-```bash
-python python/run_3configs.py
-```
-
-Genera `build/transmitted_<config>.txt` y `build/output_<config>.root`.
-
-### Análisis comparativo (`compare_transmitted.py`)
-
-Lee los 3 archivos de salida y genera gráficas en `python/plots_3configs/`:
-- Conteo y fracción de transmisión por tipo de partícula
-- Espectros de energía de neutrones y gammas
-- Origen de partículas (VertexVolume)
-- Tabla resumen CSV
-
-```bash
-python python/compare_transmitted.py
-```
-
----
-
-## Generación de video
-
-El script `make_video.sh` automatiza el pipeline completo:
-
-```bash
-./make_video.sh -n 120 -f 60 -o video_grafeno.mp4
-```
-
-| Opción | Descripción |
-|--------|-------------|
-| `-n FRAMES` | número de frames/eventos (default: 120) |
-| `-f FPS` | framerate del video (default: 60) |
-| `-a ALPHA` | opacidad del overlay de geometría (default: 0.25) |
-| `-o OUTPUT` | nombre del MP4 de salida |
-| `--no-sim` | reusar EPS existentes |
-| `--no-rebuild` | no recompilar |
-
-Dependencias: `gs` (Ghostscript), `ffmpeg`, entorno Python en `~/mi_entorno`.
+| Tabla | Contenido |
+|---|---|
+| `ParticulasTransmitidas` | Cada partícula que entra al detector, es decir, que sale de la película: `EventID`, `ParticleType`, `KineticEnergy_MeV`, `DirX/Y/Z`, `PosX/Y/Z_cm`, `CreatorProcess`, `TargetZ`, `TargetA` y `VertexVolume` (volumen donde nació). Es la entrada de la etapa 3. |
+| `ProductosCaptura` | Las partículas que nacen en el grafeno (α, ⁷Li, γ), con las mismas columnas salvo `VertexVolume`. |
+| `RangoIones` | Energía de creación (`VertexEnergy_MeV`) y longitud de la trayectoria (`TrackLength_um`) de cada α y ⁷Li. |
 
 ---
 
 ## Estructura del código
 
 | Clase | Responsabilidad |
-|-------|----------------|
-| `DetectorConstruction` | Geometría: capa grafeno-boro, soporte Kapton, detector; configurable desde macro |
-| `PrimaryGeneratorAction` | Lee `AmBePhaseSpace.root`; pistola de respaldo si no existe |
-| `RunAction` | Abre/cierra ROOT y archivos ASCII de salida |
-| `TransmittedSD` | Detector sensible: registra todas las partículas con phase space |
-| `CaptureSD` | Registra capturas neutrónicas en el grafeno |
+|---|---|
+| `DetectorConstruction` | Materiales (boro enriquecido, Kapton, grafeno con oxidación opcional), capas y detector; comandos `/detector/` |
+| `PrimaryGeneratorAction` | Lee la tabla `PhaseSpace` de la etapa 1, o usa la pistola de respaldo |
+| `PhaseSpaceConfig` / `GeneratorMessenger` | Ruta del archivo de phase space (`/generator/phaseSpaceFile`) |
+| `CaptureSD` / `CaptureHit` | Registro de las capturas y de los productos en el grafeno |
+| `TransmittedSD` | Detector sensible que llena `ParticulasTransmitidas` |
+| `RunAction` / `EventAction` / `SteppingAction` | Archivo ROOT, tablas, rango de los iones y progreso |
+
+**Scripts:** `python/run_simulations.py` y `python/run_simulations_boron.py` (barridos de espesor y de fracción de boro), `python/run_3configs.py` y `python/compare_transmitted.py` (comparación de los órdenes de capas), y `make_video.sh` con `python/accumulate_frames.py` (video de la simulación). En `python/plots_*` quedan figuras de estudios anteriores.
 
 ---
 
-## Contacto
+## Autor
 
-Proyecto desarrollado por **Luis Beltrán**  
-Maestría en Ingeniería Física — UAN
+**Luis Beltrán** — Maestría en Ingeniería Física, Universidad Antonio Nariño (UAN).
